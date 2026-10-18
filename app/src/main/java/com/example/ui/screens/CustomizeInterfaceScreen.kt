@@ -249,6 +249,12 @@ fun CustomizeInterfaceScreen(
     val subDepth by settingsManager.subscribeDepth.collectAsStateWithLifecycle()
     val subRefraction by settingsManager.subscribeRefraction.collectAsStateWithLifecycle()
     val subEdgeHighlight by settingsManager.subscribeEdgeHighlight.collectAsStateWithLifecycle()
+    val neonMaster by settingsManager.neonLightsMaster.collectAsStateWithLifecycle()
+    val neonColorHex by settingsManager.neonColorHex.collectAsStateWithLifecycle()
+    val neonIntensity by settingsManager.neonIntensity.collectAsStateWithLifecycle()
+    val neonAnimated by settingsManager.neonAnimated.collectAsStateWithLifecycle()
+    val neonSpeed by settingsManager.neonAnimationSpeed.collectAsStateWithLifecycle()
+    val lgSpecular by settingsManager.liquidGlassSpecular.collectAsStateWithLifecycle()
 
     var isGlassAdvancedMode by remember { mutableStateOf(false) }
     var previewIsSubscribed by remember { mutableStateOf(false) }
@@ -700,6 +706,49 @@ fun CustomizeInterfaceScreen(
                                 )
                             }
                         }
+                    }
+
+                    "Liquid Glass" -> {
+                        liquidGlassStudioItems(
+                            settingsManager = settingsManager,
+                            interfaceBuilderManager = interfaceBuilderManager,
+                            glassConfig = glassConfig,
+                            accentColor = accentColor,
+                            context = context,
+                            lgMaster = lgMaster,
+                            lgTransparency = lgTransparency,
+                            lgBlur = lgBlur,
+                            lgCornerRadius = lgCornerRadius,
+                            lgRefractionHeight = lgRefractionHeight,
+                            lgRefraction = lgRefraction,
+                            lgLayerRefraction = lgLayerRefraction,
+                            lgDepthEnabled = lgDepthEnabled,
+                            lgVibrancy = lgVibrancy,
+                            lgEdgeHighlights = lgEdgeHighlights,
+                            lgBorderThickness = lgBorderThickness,
+                            lgReflection = lgReflection,
+                            lgTintColorHex = lgTintColorHex,
+                            lgShadowElevation = lgShadowElevation,
+                            lgAnimIntensity = lgAnimIntensity,
+                            lgPerfMode = lgPerfMode,
+                            lgSpecular = lgSpecular,
+                            opticalChromaticDispersion = opticalChromaticDispersion,
+                            neonMaster = neonMaster,
+                            neonColorHex = neonColorHex,
+                            neonIntensity = neonIntensity,
+                            neonAnimated = neonAnimated,
+                            neonSpeed = neonSpeed,
+                            subGlassEnabled = subGlassEnabled,
+                            subGlassTintHex = subGlassTintHex,
+                            subTransparency = subTransparency,
+                            subCornerRadius = subCornerRadius,
+                            subDepth = subDepth,
+                            subRefraction = subRefraction,
+                            subEdgeHighlight = subEdgeHighlight,
+                            currentTheme = currentTheme,
+                            isAdvancedMode = isGlassAdvancedMode,
+                            onToggleAdvancedMode = { isGlassAdvancedMode = it }
+                        )
                     }
 
                     "Icons" -> {
@@ -1159,33 +1208,79 @@ fun CustomizeInterfaceScreen(
                 }
             } else {
                 // ==============================================================
-                // CATEGORIES 1-6: LIVE PREVIEWS & SPECIALIZED CONTROLS
+                // CATEGORIES 1-7: LIVE PREVIEWS & SPECIALIZED CONTROLS
                 // ==============================================================
-                item {
-                    SectionHeader("Live Interactive Preview")
-                    LivePreviewCard(
-                        categoryIndex = selectedCategory,
-                        accentColor = accentColor,
-                        glassConfig = glassConfig,
-                        isGlassTheme = isGlassTheme,
-                        homeCardCornerRadius = homeCardCornerRadius,
-                        homeGlassCards = homeGlassCards,
-                        shortsActionButtonStyle = shortsActionButtonStyle,
-                        shortsActionIconScale = shortsActionIconScale,
-                        navBarHeightDp = navBarHeightDp,
-                        navBarIndicatorStyle = navBarIndicatorStyle,
-                        navBarShowLabels = navBarShowLabels,
-                        profileAvatarRadius = profileAvatarCornerRadius,
-                        profileHeaderGlass = profileHeaderGlassStyle != "Solid",
-                        notifCardRadius = notifCardCornerRadius,
-                        notifGlassCards = notifGlassCards,
-                        opticalCurvature = opticalCurvaturePower
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
+                if (selectedCategory != 1) {
+                    item {
+                        SectionHeader("Live Interactive Preview")
+                        LivePreviewCard(
+                            categoryIndex = selectedCategory,
+                            accentColor = accentColor,
+                            glassConfig = glassConfig,
+                            isGlassTheme = isGlassTheme,
+                            homeCardCornerRadius = homeCardCornerRadius,
+                            homeGlassCards = homeGlassCards,
+                            shortsActionButtonStyle = shortsActionButtonStyle,
+                            shortsActionIconScale = shortsActionIconScale,
+                            navBarHeightDp = navBarHeightDp,
+                            navBarIndicatorStyle = navBarIndicatorStyle,
+                            navBarShowLabels = navBarShowLabels,
+                            profileAvatarRadius = profileAvatarCornerRadius,
+                            profileHeaderGlass = profileHeaderGlassStyle != "Solid",
+                            notifCardRadius = notifCardCornerRadius,
+                            notifGlassCards = notifGlassCards,
+                            opticalCurvature = opticalCurvaturePower
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
                 }
 
                 when (selectedCategory) {
                     1 -> {
+                        // Liquid Glass Studio (All 25 controls, Live Preview & Full-Spectrum Pickers)
+                        liquidGlassStudioItems(
+                            settingsManager = settingsManager,
+                            interfaceBuilderManager = interfaceBuilderManager,
+                            glassConfig = glassConfig,
+                            accentColor = accentColor,
+                            context = context,
+                            lgMaster = lgMaster,
+                            lgTransparency = lgTransparency,
+                            lgBlur = lgBlur,
+                            lgCornerRadius = lgCornerRadius,
+                            lgRefractionHeight = lgRefractionHeight,
+                            lgRefraction = lgRefraction,
+                            lgLayerRefraction = lgLayerRefraction,
+                            lgDepthEnabled = lgDepthEnabled,
+                            lgVibrancy = lgVibrancy,
+                            lgEdgeHighlights = lgEdgeHighlights,
+                            lgBorderThickness = lgBorderThickness,
+                            lgReflection = lgReflection,
+                            lgTintColorHex = lgTintColorHex,
+                            lgShadowElevation = lgShadowElevation,
+                            lgAnimIntensity = lgAnimIntensity,
+                            lgPerfMode = lgPerfMode,
+                            lgSpecular = lgSpecular,
+                            opticalChromaticDispersion = opticalChromaticDispersion,
+                            neonMaster = neonMaster,
+                            neonColorHex = neonColorHex,
+                            neonIntensity = neonIntensity,
+                            neonAnimated = neonAnimated,
+                            neonSpeed = neonSpeed,
+                            subGlassEnabled = subGlassEnabled,
+                            subGlassTintHex = subGlassTintHex,
+                            subTransparency = subTransparency,
+                            subCornerRadius = subCornerRadius,
+                            subDepth = subDepth,
+                            subRefraction = subRefraction,
+                            subEdgeHighlight = subEdgeHighlight,
+                            currentTheme = currentTheme,
+                            isAdvancedMode = isGlassAdvancedMode,
+                            onToggleAdvancedMode = { isGlassAdvancedMode = it }
+                        )
+                    }
+
+                    2 -> {
                         // Home Feed
                         item { SectionHeader("Home Feed Layout & Cards") }
                         item {
@@ -1229,7 +1324,7 @@ fun CustomizeInterfaceScreen(
                         }
                     }
 
-                    2 -> {
+                    3 -> {
                         // Shorts Screen
                         item { SectionHeader("Shorts Screen Controls") }
                         item {
@@ -1254,7 +1349,7 @@ fun CustomizeInterfaceScreen(
                         }
                     }
 
-                    3 -> {
+                    4 -> {
                         // Navigation Bar
                         item { SectionHeader("Bottom Navigation Bar") }
                         item {
@@ -1287,7 +1382,7 @@ fun CustomizeInterfaceScreen(
                         }
                     }
 
-                    4 -> {
+                    5 -> {
                         // Profile UI
                         item { SectionHeader("Profile & Library Styling") }
                         item {
@@ -1311,7 +1406,7 @@ fun CustomizeInterfaceScreen(
                         }
                     }
 
-                    5 -> {
+                    6 -> {
                         // Notifications
                         item { SectionHeader("Notifications Screen Styling") }
                         item {
@@ -1345,7 +1440,7 @@ fun CustomizeInterfaceScreen(
                         }
                     }
 
-                    6 -> {
+                    7 -> {
                         // GPU Shaders & Physics
                         item { SectionHeader("Real-Time GPU Optics & Spring Physics") }
                         item {
@@ -1806,7 +1901,7 @@ private fun LivePreviewCard(
             .padding(14.dp)
     ) {
         when (categoryIndex) {
-            1 -> {
+            2 -> {
                 // Home Feed Preview
                 Column {
                     Text("Live Home Feed Card Preview", color = YtTextSecondary, fontSize = 11.sp)
@@ -1848,7 +1943,7 @@ private fun LivePreviewCard(
                 }
             }
 
-            2 -> {
+            3 -> {
                 // Shorts Preview
                 Column {
                     Text("Live Shorts Vertical Toolbar Preview", color = YtTextSecondary, fontSize = 11.sp)
@@ -1865,7 +1960,7 @@ private fun LivePreviewCard(
                 }
             }
 
-            3 -> {
+            4 -> {
                 // Navigation Bar Preview
                 Column {
                     Text("Live Navigation Dock Preview (${navBarHeightDp.toInt()}dp height)", color = YtTextSecondary, fontSize = 11.sp)
@@ -1910,7 +2005,7 @@ private fun LivePreviewCard(
                 }
             }
 
-            4 -> {
+            5 -> {
                 // Profile UI Preview
                 Column {
                     Text("Live Profile Header Preview", color = YtTextSecondary, fontSize = 11.sp)
@@ -1934,7 +2029,7 @@ private fun LivePreviewCard(
                 }
             }
 
-            5 -> {
+            6 -> {
                 // Notifications Preview
                 Column {
                     Text("Live Notification Card Preview", color = YtTextSecondary, fontSize = 11.sp)

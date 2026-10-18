@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import com.example.ui.components.FullSpectrumColorPicker
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -738,46 +739,14 @@ fun SettingsScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                            .padding(vertical = 4.dp)
                     ) {
-                        Text("Neon Light Color", color = YtTextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        val neonColors = listOf(
-                            "Cyan" to 0xFF00E5FFL,
-                            "Magenta" to 0xFFFF007FL,
-                            "Lime" to 0xFF00E676L,
-                            "Purple" to 0xFFD500F9L,
-                            "Amber" to 0xFFFFD600L,
-                            "Flame" to 0xFFFF3D00L,
-                            "Blue" to 0xFF2979FFL
+                        FullSpectrumColorPicker(
+                            title = "Neon Light Color",
+                            initialColorHex = neonColorHex,
+                            onColorChanged = { settingsManager.setNeonColorHex(it) },
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                         )
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            neonColors.forEach { (name, hex) ->
-                                val isSelected = neonColorHex == hex
-                                Box(
-                                    modifier = Modifier
-                                        .size(38.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(hex))
-                                        .border(
-                                            width = if (isSelected) 3.dp else 1.dp,
-                                            color = if (isSelected) Color.White else Color.Transparent,
-                                            shape = CircleShape
-                                        )
-                                        .clickable { settingsManager.setNeonColorHex(hex) },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (isSelected) {
-                                        Icon(Icons.Default.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
-                                    }
-                                }
-                            }
-                        }
                     }
                 }
 

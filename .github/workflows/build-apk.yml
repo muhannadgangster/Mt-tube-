@@ -117,7 +117,6 @@ jobs:
 
       - name: Publish APK to GitHub Releases
         id: publish_release
-        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -176,17 +175,42 @@ jobs:
           TAG="debug-apk-build-${{ github.run_number }}-${{ github.run_attempt }}"
           TITLE="Debug APK Build #${{ github.run_number }}"
 
-          if [ "$BUILD_OUTCOME" != "success" ] || [ "$VERIFY_OUTCOME" != "success" ]; then
-            echo "::error::Debug APK build failed. Check compilation errors in previous steps."
+          if [ "$BUILD_OUTCOME" != "success" ]; then
+            echo "::error::Debug APK build failed (:app:assembleDebug). Check compilation errors."
             {
               echo "### ❌ Debug APK Build Failed"
               echo ""
-              echo "The Gradle build task \`:app:assembleDebug\` or APK verification failed."
+              echo "The Gradle build task \`:app:assembleDebug\` failed."
               echo "No APK was produced or published."
               echo "Check the build logs for specific compilation errors."
             } >> "$GITHUB_STEP_SUMMARY"
             exit 1
-          elif [ "$RELEASE_OUTCOME" = "success" ]; then
+          elif [ "$VERIFY_OUTCOME" != "success" ]; then
+            echo "::error::Debug APK verification failed. The generated APK was missing or empty."
+            {
+              echo "### ❌ APK Verification Failed"
+              echo ""
+              echo "The debug APK was not found at the expected path or was empty."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          elif [ "$UPLOAD_OUTCOME" != "success" ]; then
+            echo "::error::Uploading debug APK artifact failed."
+            {
+              echo "### ❌ Artifact Upload Failed"
+              echo ""
+              echo "Failed to upload the debug APK artifact to GitHub Actions."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          elif [ "$RELEASE_OUTCOME" != "success" ]; then
+            echo "::error::GitHub Release creation failed."
+            {
+              echo "### ❌ GitHub Release Creation Failed"
+              echo ""
+              echo "The APK was built and verified, but publishing the GitHub Release failed."
+              echo "The artifact \`app-debug-apk\` may be available under GitHub Actions run artifacts."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          else
             echo "=========================================================="
             echo "GitHub Release published successfully!"
             echo "Release Tag: $TAG"
@@ -205,26 +229,7 @@ jobs:
               echo ""
               echo "Download **app-debug.apk** directly to your device via the direct download link."
               echo ""
-              echo "*Backup:* The standard GitHub Actions artifact \`app-debug-apk\` is also available."
+              echo "*Artifact:* The GitHub Actions artifact \`app-debug-apk\` is also available."
             } >> "$GITHUB_STEP_SUMMARY"
-          elif [ "$UPLOAD_OUTCOME" = "success" ]; then
-            echo "::warning::Release publishing failed or was skipped, but APK build and artifact upload succeeded."
-            echo "Actions artifact 'app-debug-apk' remains available for download."
-            {
-              echo "### ⚠️ Debug APK Build Succeeded (Release Publishing Failed)"
-              echo ""
-              echo "The debug APK was built successfully and preserved as a GitHub Actions artifact."
-              echo ""
-              echo "- **Artifact Name:** \`app-debug-apk\`"
-              echo "- **Status:** Available under the Artifacts section of this workflow run."
-              echo ""
-              echo "GitHub Release publishing did not succeed, but the APK was not lost."
-            } >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "::error::Build or packaging failed."
-            {
-              echo "### ❌ Build Process Failed"
-              echo "APK generation or artifact packaging did not complete successfully."
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 1
           fi
+

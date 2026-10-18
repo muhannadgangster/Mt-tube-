@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -464,3 +465,88 @@ fun LiquidGlassSubscribeButton(
         }
     }
 }
+
+/**
+ * Reusable GlassTopBar:
+ * Liquid Glass top app bar with subtle bottom curvature, depth, and edge sheen.
+ */
+@Composable
+fun GlassTopBar(
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
+    elevation: Dp = 8.dp,
+    content: @Composable RowScope.() -> Unit
+) {
+    val glassConfig = LocalLiquidGlassConfig.current
+    val accentColor = LocalAppAccentColor.current
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(
+                if (glassConfig.isEnabled) {
+                    Modifier.liquidGlassSurface(
+                        shape = shape,
+                        config = glassConfig,
+                        accentColor = accentColor,
+                        elevation = elevation
+                    )
+                } else {
+                    Modifier
+                        .background(Color(0xFF0F0F0F))
+                        .border(1.dp, YtBorder, shape)
+                }
+            )
+            .padding(horizontal = 14.dp, vertical = 6.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            content()
+        }
+    }
+}
+
+/**
+ * Reusable GlassMenu:
+ * Floating or dropdown popup container styled with Liquid Glass depth and beveled edges.
+ */
+@Composable
+fun GlassMenu(
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(16.dp),
+    elevation: Dp = 10.dp,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val glassConfig = LocalLiquidGlassConfig.current
+    val accentColor = LocalAppAccentColor.current
+
+    Box(
+        modifier = modifier
+            .then(
+                if (glassConfig.isEnabled) {
+                    Modifier.liquidGlassSurface(
+                        shape = shape,
+                        config = glassConfig,
+                        accentColor = accentColor,
+                        elevation = elevation
+                    )
+                } else {
+                    Modifier
+                        .clip(shape)
+                        .background(YtSurfaceDark)
+                        .border(1.dp, YtBorder, shape)
+                }
+            )
+            .padding(vertical = 8.dp)
+    ) {
+        Column {
+            content()
+        }
+    }
+}
+
