@@ -69,11 +69,13 @@ jobs:
           echo "Temporary debug keystore verified."
 
       - name: Build the debug APK
+        id: build_apk
         env:
           GRADLE_OPTS: "-Djava.awt.headless=true"
         run: gradle :app:assembleDebug --stacktrace --no-daemon
 
       - name: Verify debug APK
+        id: verify_apk
         run: |
           EXPECTED_APK="app/build/outputs/apk/debug/app-debug.apk"
           if [ ! -f "$EXPECTED_APK" ]; then
@@ -91,6 +93,7 @@ jobs:
           echo "Verified APK at $EXPECTED_APK ($(stat -c%s "$EXPECTED_APK") bytes)"
 
       - name: Upload debug APK artifact
+        id: upload_apk
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
@@ -165,12 +168,25 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          OUTCOME="${{ steps.publish_release.outcome }}"
+          BUILD_OUTCOME="${{ steps.build_apk.outcome }}"
+          VERIFY_OUTCOME="${{ steps.verify_apk.outcome }}"
+          UPLOAD_OUTCOME="${{ steps.upload_apk.outcome }}"
+          RELEASE_OUTCOME="${{ steps.publish_release.outcome }}"
           ASSET_NAME="${{ steps.prepare_asset.outputs.asset_name }}"
           TAG="debug-apk-build-${{ github.run_number }}-${{ github.run_attempt }}"
           TITLE="Debug APK Build #${{ github.run_number }}"
 
-          if [ "$OUTCOME" = "success" ]; then
+          if [ "$BUILD_OUTCOME" != "success" ] || [ "$VERIFY_OUTCOME" != "success" ]; then
+            echo "::error::Debug APK build failed. Check compilation errors in previous steps."
+            {
+              echo "### ❌ Debug APK Build Failed"
+              echo ""
+              echo "The Gradle build task \`:app:assembleDebug\` or APK verification failed."
+              echo "No APK was produced or published."
+              echo "Check the build logs for specific compilation errors."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          elif [ "$RELEASE_OUTCOME" = "success" ]; then
             echo "=========================================================="
             echo "GitHub Release published successfully!"
             echo "Release Tag: $TAG"
@@ -191,8 +207,8 @@ jobs:
               echo ""
               echo "*Backup:* The standard GitHub Actions artifact \`app-debug-apk\` is also available."
             } >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "::warning::Release publishing failed or was skipped. APK build and artifact upload succeeded."
+          elif [ "$UPLOAD_OUTCOME" = "success" ]; then
+            echo "::warning::Release publishing failed or was skipped, but APK build and artifact upload succeeded."
             echo "Actions artifact 'app-debug-apk' remains available for download."
             {
               echo "### ⚠️ Debug APK Build Succeeded (Release Publishing Failed)"
@@ -204,4 +220,11 @@ jobs:
               echo ""
               echo "GitHub Release publishing did not succeed, but the APK was not lost."
             } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error::Build or packaging failed."
+            {
+              echo "### ❌ Build Process Failed"
+              echo "APK generation or artifact packaging did not complete successfully."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
           fi

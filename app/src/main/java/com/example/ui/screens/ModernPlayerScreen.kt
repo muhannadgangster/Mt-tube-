@@ -175,6 +175,7 @@ fun ModernPlayerScreen(
     var isSpeedBoosting by remember { mutableStateOf(false) }
 
     val accentColor = LocalAppAccentColor.current
+    val glassConfig = LocalLiquidGlassConfig.current
     var isNeonLightsOn by remember { mutableStateOf(true) }
 
     val onSpeedSelected: (Float) -> Unit = { speed ->
@@ -1174,7 +1175,6 @@ fun ModernPlayerScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // 1. Combined Like / Dislike Pill (Screenshot 2)
-                        val glassConfig = LocalLiquidGlassConfig.current
                         Row(
                             modifier = Modifier
                                 .then(
