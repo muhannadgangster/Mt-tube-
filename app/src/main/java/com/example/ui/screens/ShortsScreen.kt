@@ -53,10 +53,15 @@ import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.ThumbDown
+import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material.icons.outlined.ThumbDown
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.IconButton
@@ -133,6 +138,7 @@ fun ShortsScreen(
     onNotificationsClick: (() -> Unit)? = null,
     unreadNotificationCount: Int = 0,
     onToggleDownload: ((VideoItem) -> Unit)? = null,
+    onBackClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     if (shortsList.isEmpty()) {
@@ -198,6 +204,7 @@ fun ShortsScreen(
                 pageIndex = page,
                 isActive = isCurrentPage,
                 onToggleLike = { onToggleLike(video) },
+                onToggleDislike = { onToggleDislike(video) },
                 onToggleSubscribe = { onToggleSubscribe(video) },
                 onOpenComments = { onOpenComments(video) },
                 onToggleSave = { onToggleSave(video) },
@@ -208,7 +215,7 @@ fun ShortsScreen(
             )
         }
 
-        // Top Floating Liquid Glass Action Bar (Reference layout: Search + 3 action icons)
+        // Top Floating Liquid Glass Action Bar (Matching Reference Photo Screen 2: Shorts Feed)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -218,102 +225,38 @@ fun ShortsScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Left: Shorts Title with subtle glass pill
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(14.dp))
-                    .then(
-                        if (glassConfig.isEnabled) {
-                            Modifier.liquidGlassSurface(
-                                shape = RoundedCornerShape(14.dp),
-                                config = glassConfig,
-                                elevation = 3.dp
-                            )
-                        } else {
-                            Modifier.background(Color(0x66000000))
-                        }
-                    )
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = "Shorts",
-                        tint = YtRed,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Shorts",
-                        color = Color.White,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
+            // Left: Back button to return to feed
+            GlassIconButton(
+                onClick = { onBackClick?.invoke() },
+                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                size = 40.dp,
+                iconSize = 22.dp,
+                testTag = "shorts_top_back"
+            )
 
-            // Right: Search icon + 3 Action Icons: 1. Camera, 2. Notifications, 3. More
+            // Right: Search & More (3 dots)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Search icon
                 if (onSearchClick != null) {
                     GlassIconButton(
                         onClick = onSearchClick,
                         icon = Icons.Default.Search,
                         contentDescription = "Search",
-                        size = 38.dp,
-                        iconSize = 20.dp,
+                        size = 40.dp,
+                        iconSize = 22.dp,
                         testTag = "shorts_top_search"
                     )
                 }
 
-                // 1. Camera / Create
-                if (onCameraClick != null) {
-                    GlassIconButton(
-                        onClick = onCameraClick,
-                        icon = Icons.Default.CameraAlt,
-                        contentDescription = "Create Shorts",
-                        size = 38.dp,
-                        iconSize = 20.dp,
-                        testTag = "shorts_top_camera"
-                    )
-                }
-
-                // 2. Notifications with Dynamic Unread Badge
-                if (onNotificationsClick != null) {
-                    Box {
-                        GlassIconButton(
-                            onClick = onNotificationsClick,
-                            icon = Icons.Default.Notifications,
-                            contentDescription = "Notifications",
-                            size = 38.dp,
-                            iconSize = 20.dp,
-                            testTag = "shorts_top_notifications"
-                        )
-                        if (unreadNotificationCount > 0) {
-                            Badge(
-                                containerColor = YtRed,
-                                contentColor = Color.White,
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .size(16.dp)
-                            ) {
-                                val text = if (unreadNotificationCount > 99) "99+" else unreadNotificationCount.toString()
-                                Text(text, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-                }
-
-                // 3. More options (opens GlassVideoActionSheet)
                 GlassIconButton(
                     onClick = { activeSheetVideo = currentVideo },
                     icon = Icons.Default.MoreVert,
                     contentDescription = "More",
-                    size = 38.dp,
-                    iconSize = 20.dp,
+                    size = 40.dp,
+                    iconSize = 22.dp,
                     testTag = "shorts_top_more"
                 )
             }
@@ -340,6 +283,7 @@ private fun ShortsItemPage(
     pageIndex: Int,
     isActive: Boolean,
     onToggleLike: () -> Unit,
+    onToggleDislike: () -> Unit,
     onToggleSubscribe: () -> Unit,
     onOpenComments: () -> Unit,
     onToggleSave: () -> Unit,
@@ -752,31 +696,31 @@ private fun ShortsItemPage(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp.scaled())
         ) {
-            // 1. Heart / Like Icon with live real-time count from database
+            // 1. Thumb Up / Like (Matching Reference Photo Screen 2)
             ShortsActionButton(
-                icon = if (video.isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                icon = if (video.isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
                 label = video.formattedLikesCount,
                 tint = if (video.isLiked) appAccentColor else Color.White,
                 testTag = "shorts_like_button",
                 onClick = onToggleLike
             )
 
-            // 2. Comment Icon with live real-time count from database
+            // 2. Thumb Down / Dislike (Matching Reference Photo Screen 2)
+            ShortsActionButton(
+                icon = Icons.Outlined.ThumbDown,
+                label = "Dislike",
+                tint = Color.White,
+                testTag = "shorts_dislike_button",
+                onClick = onToggleDislike
+            )
+
+            // 3. Comment Icon with live real-time count from database
             ShortsActionButton(
                 icon = Icons.Outlined.ChatBubbleOutline,
                 label = video.formattedCommentsCount,
                 tint = Color.White,
                 testTag = "shorts_comment_button",
                 onClick = onOpenComments
-            )
-
-            // 3. Bookmark / Save Icon with live watch later persistence
-            ShortsActionButton(
-                icon = if (video.isWatchLater) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                label = "Save",
-                tint = if (video.isWatchLater) Color(0xFF3EA6FF) else Color.White,
-                testTag = "shorts_save_button",
-                onClick = onToggleSave
             )
 
             // 4. Share Icon (curved arrow)
@@ -967,10 +911,7 @@ private fun ShortsActionButton(
             ) { onClick() }
             .testTag(testTag)
     ) {
-        val buttonShape = when (btnStyle) {
-            "Glass Pill" -> RoundedCornerShape(12.dp)
-            else -> CircleShape
-        }
+        val buttonShape = CircleShape
         val isGlass = glassConfig.isEnabled || glassConfig.neonEnabled
         Box(
             modifier = Modifier

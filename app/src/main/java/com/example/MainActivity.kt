@@ -71,6 +71,7 @@ import com.example.ui.components.YouTubeBottomBar
 import com.example.ui.components.YouTubeSplashScreen
 import com.example.ui.components.YouTubeTopBar
 import com.example.ui.screens.CustomPageRendererScreen
+import com.example.ui.screens.FirstLaunchOnboardingScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.LibraryScreen
 import com.example.ui.screens.ModernPlayerScreen
@@ -473,6 +474,16 @@ fun MyTubeApp(
     val hasCustomWallpaper = !customBackgroundUri.isNullOrBlank()
     val isGlassTheme = lgMaster && currentUiTheme.contains("Liquid Glass")
 
+    val onboardingCompleted by viewModel.settingsManager.onboardingCompleted.collectAsStateWithLifecycle()
+
+    if (!onboardingCompleted) {
+        FirstLaunchOnboardingScreen(
+            settingsManager = viewModel.settingsManager,
+            onComplete = {}
+        )
+        return
+    }
+
     if (isInPipMode && currentlyPlaying != null) {
         PipVideoPlayer(
             video = currentlyPlaying!!,
@@ -758,7 +769,8 @@ fun MyTubeApp(
                                 onCameraClick = { viewModel.setShortsCameraOpen(true) },
                                 onNotificationsClick = { viewModel.setNotificationsSheetOpen(true) },
                                 unreadNotificationCount = unreadNotificationCount,
-                                onToggleDownload = { viewModel.toggleDownloaded(it) }
+                                onToggleDownload = { viewModel.toggleDownloaded(it) },
+                                onBackClick = { viewModel.selectTab(0) }
                             )
 
                             3 -> SubscriptionsScreen(

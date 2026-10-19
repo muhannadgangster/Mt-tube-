@@ -237,7 +237,6 @@ fun Modifier.liquidGlassSurface(
             } else Modifier
         )
         .clip(shape)
-        .then(blurEffectModifier)
         .drawBehind {
             // A. Base translucent glass material
             drawRect(color = baseGlassColor)

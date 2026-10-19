@@ -99,6 +99,15 @@ class SettingsManager(context: Context) {
         }
     }
 
+    // First-launch onboarding state (saved persistently in local preferences)
+    private val _onboardingCompleted = MutableStateFlow(prefs.getBoolean("onboarding_completed", false))
+    val onboardingCompleted: StateFlow<Boolean> = _onboardingCompleted.asStateFlow()
+
+    fun setOnboardingCompleted(completed: Boolean = true) {
+        _onboardingCompleted.value = completed
+        prefs.edit().putBoolean("onboarding_completed", completed).apply()
+    }
+
     // Custom Background Dimming & Blur
     private val _customBackgroundDim = MutableStateFlow(prefs.getFloat("custom_background_dim", 0.75f))
     val customBackgroundDim: StateFlow<Float> = _customBackgroundDim.asStateFlow()

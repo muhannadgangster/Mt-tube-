@@ -26,13 +26,20 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +60,7 @@ import com.example.ui.theme.liquidGlassSurface
 import com.example.ui.theme.YtAvatarPurple
 import com.example.ui.theme.YtDarkBackground
 import com.example.ui.theme.YtRed
+import com.example.ui.theme.YtSurfaceDark
 import com.example.ui.theme.YtSurfaceVariant
 import com.example.ui.theme.YtTextPrimary
 import com.example.ui.theme.YtTextSecondary
@@ -216,22 +224,22 @@ fun YouTubeTopBar(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                // Cast Icon
+                // 1. Search Icon
                 IconButton(
-                    onClick = { /* Cast dialog */ },
+                    onClick = { onSearchToggle(true) },
                     modifier = Modifier
                         .size(40.dp)
-                        .testTag("cast_button")
+                        .testTag("search_icon_button")
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Cast,
-                        contentDescription = "Cast",
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
                         tint = YtTextPrimary,
                         modifier = Modifier.size(22.dp)
                     )
                 }
 
-                // Notification Bell with Badge
+                // 2. Notification Bell with Badge
                 IconButton(
                     onClick = onNotificationsClick,
                     modifier = Modifier
@@ -268,81 +276,47 @@ fun YouTubeTopBar(
                     }
                 }
 
-                // Shuffle Feed Button
-                IconButton(
-                    onClick = onShuffleClick,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .testTag("shuffle_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Shuffle,
-                        contentDescription = "Shuffle Videos",
-                        tint = YtTextPrimary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                // Dynamic User-Configured Custom Icons (from Interface Builder)
-                val topBarCustomIcons = customIcons.filter { it.targetLocation == IconLocations.MAIN_TOP_BAR && it.visible }
-                topBarCustomIcons.forEach { customIcon ->
+                // 3. Three-Dots Overflow Menu (Matching Reference Photo Screen 1 & 4)
+                var showOverflowMenu by remember { mutableStateOf(false) }
+                Box {
                     IconButton(
-                        onClick = { onCustomIconClick(customIcon) },
+                        onClick = { showOverflowMenu = !showOverflowMenu },
                         modifier = Modifier
                             .size(40.dp)
-                            .testTag("top_bar_custom_icon_${customIcon.id}")
+                            .testTag("top_bar_more_button")
                     ) {
                         Icon(
-                            imageVector = IconCatalog.getIconByName(customIcon.iconName),
-                            contentDescription = customIcon.label,
-                            tint = customIcon.tintColorHex?.let { Color(it) } ?: accentColor,
-                            modifier = Modifier.size(customIcon.sizeDp.dp)
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "More options",
+                            tint = YtTextPrimary,
+                            modifier = Modifier.size(22.dp)
                         )
                     }
-                }
 
-                // Search Icon
-                IconButton(
-                    onClick = { onSearchToggle(true) },
-                    modifier = Modifier
-                        .size(40.dp)
-                        .testTag("search_icon_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Search",
-                        tint = YtTextPrimary,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(4.dp))
-
-                // User Avatar Circle
-                Box(
-                    modifier = Modifier
-                        .size(30.dp)
-                        .clip(CircleShape)
-                        .background(YtAvatarPurple)
-                        .clickable { onProfileClick() }
-                        .testTag("top_bar_user_avatar"),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (!userAvatarUri.isNullOrBlank()) {
-                        AsyncImage(
-                            model = userAvatarUri,
-                            contentDescription = "Profile picture",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape)
+                    DropdownMenu(
+                        expanded = showOverflowMenu,
+                        onDismissRequest = { showOverflowMenu = false },
+                        modifier = Modifier.background(YtSurfaceDark)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Profile", color = YtTextPrimary) },
+                            onClick = {
+                                showOverflowMenu = false
+                                onProfileClick()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = accentColor, modifier = Modifier.size(18.dp))
+                            }
                         )
-                    } else {
-                        Text(
-                            text = userName.take(1).uppercase().ifBlank { "M" },
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                        DropdownMenuItem(
+                            text = { Text("Shuffle Videos", color = YtTextPrimary) },
+                            onClick = {
+                                showOverflowMenu = false
+                                onShuffleClick()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Shuffle, contentDescription = null, tint = YtTextSecondary, modifier = Modifier.size(18.dp))
+                            }
                         )
                     }
                 }
