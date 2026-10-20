@@ -36,6 +36,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 
+import kotlin.math.cos
+import kotlin.math.sin
+
 /**
  * Android Graphics Shading Language (AGSL) Real-Time Optical Liquid Glass Shader
  * Runs directly on GPU for real-time background pixel refraction and chromatic dispersion.
@@ -141,6 +144,21 @@ data class LiquidGlassStyleConfig(
     val borderThicknessDp: Float = 1.0f,
     val isDarkGlass: Boolean = true,
     val isFrosted: Boolean = true,
+    // Directional Light Angle (0° .. 360°, where 315° is Top-Left)
+    val lightAngleDegrees: Float = 315f,
+    // 3D Liquid Drop Central Reflection
+    val liquidDropReflectionEnabled: Boolean = true,
+    val dropReflectionSize: Float = 0.55f,
+    val dropReflectionIntensity: Float = 0.75f,
+    val dropReflectionX: Float = 0.50f,
+    val dropReflectionY: Float = 0.35f,
+    val dropReflectionSoftness: Float = 0.65f,
+    val dropSecondaryHighlight: Float = 0.45f,
+    // 3D Lens Geometry & Curvature
+    val convexCurvatureIntensity: Float = 0.70f,
+    val bevelStrength: Float = 0.80f,
+    val glassSmoothness: Float = 0.85f,
+    val depthIntensity: Float = 0.75f,
     // Optical GPU Shader & Edge Refraction
     val opticalShaderEnabled: Boolean = true,
     val edgeCurvaturePower: Float = 2.5f,
@@ -165,10 +183,10 @@ data class LiquidGlassStyleConfig(
 val LocalLiquidGlassConfig = staticCompositionLocalOf { LiquidGlassStyleConfig() }
 
 /**
- * Dimensional, physically-inspired iOS optical glass surface modifier:
+ * Dimensional, physically-inspired iOS optical liquid glass surface modifier:
  * - Every single parameter genuinely affects visual rendering in real time
  * - Respects master switch (bypasses completely when disabled)
- * - Supports depth, edge highlights, blur, refraction height/amount, layer separation, reflection, and custom tint
+ * - Supports depth, directional edge lighting, liquid-drop central reflection, blur, refraction, and custom tint
  */
 fun Modifier.liquidGlassSurface(
     shape: Shape,
@@ -185,7 +203,6 @@ fun Modifier.liquidGlassSurface(
     val isDark = config.isDarkGlass
 
     // 2. TRANSPARENCY & TINT: Base translucent glass material
-    // Alpha is directly computed from transparency: higher transparency -> lower opacity
     val baseAlpha = ((1f - config.transparency.coerceIn(0.1f, 0.95f)) * 0.85f).coerceIn(0.08f, 0.92f)
     val customTintColor = Color(config.glassTintColorHex)
     val baseGlassColor = if (config.glassTintColorHex != 0x35141928L && customTintColor.alpha > 0.01f) {
@@ -207,22 +224,19 @@ fun Modifier.liquidGlassSurface(
     val effectiveBorderWidth = if (config.neonEnabled) {
         1.2.dp
     } else {
-        config.glassThickness.coerceIn(0.5f, 3.5f).dp
+        (config.glassThickness * config.bevelStrength).coerceIn(0.5f, 3.5f).dp
     }
 
-    // 5. BLUR / FROSTED DISPERSION (RenderEffect on Android 12+ or subtle backdrop diffusion)
-    val blurEffectModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && config.blurRadius > 0.5f && config.performanceMode != "Battery Saver") {
-        Modifier.graphicsLayer {
-            try {
-                val blurPx = config.blurRadius.coerceIn(1f, 50f)
-                renderEffect = AndroidRenderEffect.createBlurEffect(
-                    blurPx,
-                    blurPx,
-                    Shader.TileMode.CLAMP
-                ).asComposeRenderEffect()
-            } catch (_: Exception) {}
-        }
-    } else Modifier
+    // 5. DIRECTIONAL LIGHTING CALCULATION
+    val lightRad = Math.toRadians(config.lightAngleDegrees.toDouble())
+    val lightDirX = cos(lightRad).toFloat()
+    val lightDirY = sin(lightRad).toFloat()
+
+    // Edge illumination weights (0f .. 1f) based on light direction
+    val topLightFactor = (-lightDirY).coerceIn(0f, 1f)
+    val bottomLightFactor = (lightDirY).coerceIn(0f, 1f)
+    val leftLightFactor = (-lightDirX).coerceIn(0f, 1f)
+    val rightLightFactor = (lightDirX).coerceIn(0f, 1f)
 
     return this
         .then(
@@ -238,7 +252,7 @@ fun Modifier.liquidGlassSurface(
         )
         .clip(shape)
         .drawBehind {
-            // A. Base translucent glass material
+            // A. Base translucent liquid glass material
             drawRect(color = baseGlassColor)
 
             // A2. FROSTED DIFFUSION / BACKGROUND BLUR EFFECT (Diffuses background pixels under glass without touching foreground)
@@ -256,19 +270,25 @@ fun Modifier.liquidGlassSurface(
                 drawRect(brush = diffusionBrush)
             }
 
-            // B. DEPTH GRADIENT: Layered depth illumination (only if depthEnabled is true)
+            // B. 3D CONVEX LENS CURVATURE & DEPTH GRADIENT
             if (config.isEnabled && config.depthEnabled) {
-                val depthBrush = Brush.verticalGradient(
+                val lensCenter = Offset(
+                    size.width * (0.5f - lightDirX * 0.22f),
+                    size.height * (0.5f - lightDirY * 0.22f)
+                )
+                val depthBrush = Brush.radialGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.10f * config.vibrancy),
+                        Color.White.copy(alpha = (0.13f * config.vibrancy * config.convexCurvatureIntensity).coerceIn(0.02f, 0.30f)),
                         Color.Transparent,
-                        Color.Black.copy(alpha = 0.18f * (1f - config.transparency))
-                    )
+                        Color.Black.copy(alpha = (0.22f * (1f - config.transparency) * config.depthIntensity).coerceIn(0.02f, 0.40f))
+                    ),
+                    center = lensCenter,
+                    radius = (size.width.coerceAtLeast(size.height)) * 0.85f
                 )
                 drawRect(brush = depthBrush)
             }
 
-            // C. REFRACTION & CAUSTIC BAND: Lens distortion along top quadrant
+            // C. REFRACTION & CAUSTIC BAND: Lens distortion along refraction angle
             if (config.isEnabled && config.refractionAmount > 0.05f) {
                 val causticHeightFactor = (0.20f + 0.50f * config.refractionHeight).coerceIn(0.20f, 0.75f)
                 val causticBrush = Brush.linearGradient(
@@ -278,7 +298,7 @@ fun Modifier.liquidGlassSurface(
                         Color(0xFFEA80FC).copy(alpha = (0.09f * config.refractionAmount * config.vibrancy).coerceIn(0.01f, 0.20f)),
                         Color.Transparent
                     ),
-                    start = Offset(0f, 0f),
+                    start = Offset(size.width * (0.5f - lightDirX * 0.4f), size.height * (0.5f - lightDirY * 0.4f)),
                     end = Offset(size.width * 0.85f, size.height * causticHeightFactor)
                 )
                 drawRect(
@@ -287,15 +307,89 @@ fun Modifier.liquidGlassSurface(
                 )
             }
 
-            // D. EDGE HIGHLIGHTS & SPECULAR BEVEL (only if edgeHighlights > 0)
+            // D. ORGANIC LIQUID-DROP CENTRAL REFLECTION
+            if (config.isEnabled && config.liquidDropReflectionEnabled && config.dropReflectionIntensity > 0.02f && size.width > 24f && size.height > 24f) {
+                val dropIntensity = config.dropReflectionIntensity.coerceIn(0f, 1f)
+                val dropX = (config.dropReflectionX - lightDirX * 0.04f).coerceIn(0.12f, 0.88f)
+                val dropY = (config.dropReflectionY - lightDirY * 0.04f).coerceIn(0.12f, 0.88f)
+                val dropCenterX = size.width * dropX
+                val dropCenterY = size.height * dropY
+                val minDim = size.width.coerceAtMost(size.height)
+                val dropRadius = (minDim * 0.36f * config.dropReflectionSize.coerceIn(0.2f, 1.2f))
+
+                // 1. Primary organic liquid droplet dome reflection
+                val primaryDropBrush = Brush.radialGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = (0.46f * dropIntensity * config.vibrancy).coerceIn(0.05f, 0.80f)),
+                        Color(0xFFE0F7FA).copy(alpha = (0.22f * dropIntensity * config.vibrancy).coerceIn(0.02f, 0.45f)),
+                        Color(0xFF80D8FF).copy(alpha = (0.08f * dropIntensity * config.refractionAmount).coerceIn(0.01f, 0.22f)),
+                        Color.Transparent
+                    ),
+                    center = Offset(dropCenterX, dropCenterY),
+                    radius = dropRadius * config.dropReflectionSoftness.coerceIn(0.4f, 1.6f)
+                )
+                drawCircle(
+                    brush = primaryDropBrush,
+                    radius = dropRadius,
+                    center = Offset(dropCenterX, dropCenterY)
+                )
+
+                // 2. Curved specular liquid-crest meniscus (crescent curved top highlight)
+                val crescentWidth = dropRadius * 0.80f
+                val crescentHeight = dropRadius * 0.28f
+                val crescentTopLeft = Offset(
+                    dropCenterX - crescentWidth / 2f - lightDirX * dropRadius * 0.12f,
+                    dropCenterY - dropRadius * 0.28f - lightDirY * dropRadius * 0.12f
+                )
+                drawOval(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = (0.75f * dropIntensity).coerceIn(0.10f, 0.95f)),
+                            Color.White.copy(alpha = (0.22f * dropIntensity).coerceIn(0.02f, 0.45f)),
+                            Color.Transparent
+                        ),
+                        center = Offset(crescentTopLeft.x + crescentWidth / 2f, crescentTopLeft.y + crescentHeight / 2f),
+                        radius = crescentWidth * 0.65f
+                    ),
+                    topLeft = crescentTopLeft,
+                    size = Size(crescentWidth, crescentHeight)
+                )
+
+                // 3. Secondary internal droplet bounce highlight (internal refraction)
+                if (config.dropSecondaryHighlight > 0.05f) {
+                    val secRadius = dropRadius * 0.38f
+                    val secCenter = Offset(
+                        dropCenterX + lightDirX * dropRadius * 0.20f,
+                        dropCenterY + dropRadius * 0.28f + lightDirY * dropRadius * 0.20f
+                    )
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = (0.28f * dropIntensity * config.dropSecondaryHighlight).coerceIn(0.02f, 0.45f)),
+                                Color(0xFF80D8FF).copy(alpha = (0.10f * dropIntensity * config.dropSecondaryHighlight).coerceIn(0.01f, 0.25f)),
+                                Color.Transparent
+                            ),
+                            center = secCenter,
+                            radius = secRadius
+                        ),
+                        radius = secRadius,
+                        center = secCenter
+                    )
+                }
+            }
+
+            // E. DIRECTIONAL EDGE HIGHLIGHTS & SPECULAR BEVEL (modulated by lightAngleDegrees)
             if (config.isEnabled && config.edgeHighlights > 0.05f) {
-                val highlightAlpha = (0.48f * config.edgeHighlights).coerceIn(0.05f, 0.70f)
+                val baseHighlightAlpha = (0.48f * config.edgeHighlights).coerceIn(0.05f, 0.70f)
+                val litTopAlpha = (baseHighlightAlpha * (0.35f + 0.65f * topLightFactor)).coerceIn(0.05f, 0.85f)
+                val litSideAlpha = (baseHighlightAlpha * (0.35f + 0.65f * leftLightFactor)).coerceIn(0.05f, 0.85f)
+
                 // 1. Subtle luminous bevel line along top rim
                 drawLine(
                     brush = Brush.horizontalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            Color.White.copy(alpha = highlightAlpha),
+                            Color.White.copy(alpha = litTopAlpha),
                             Color.Transparent
                         )
                     ),
@@ -304,24 +398,26 @@ fun Modifier.liquidGlassSurface(
                     strokeWidth = (config.glassThickness * 0.9f).coerceIn(0.6f, 2.5f).dp.toPx()
                 )
 
-                // 2. Corner specular flare
+                // 2. Corner specular flare positioned along light vector
+                val flareCenterX = size.width * (0.5f - lightDirX * 0.38f)
+                val flareCenterY = size.height * (0.5f - lightDirY * 0.38f)
                 val specularBrush = Brush.radialGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.32f * config.edgeHighlights),
+                        Color.White.copy(alpha = 0.35f * config.edgeHighlights),
                         Color.Transparent
                     ),
-                    center = Offset(size.width * 0.12f, size.height * 0.12f),
+                    center = Offset(flareCenterX, flareCenterY),
                     radius = (size.width.coerceAtLeast(size.height)) * 0.35f
                 )
                 drawRect(brush = specularBrush)
 
-                // 3. Bottom reflective rim & ground bounce light
-                val bottomHighlightAlpha = (0.24f * config.edgeHighlights).coerceIn(0.02f, 0.45f)
+                // 3. Opposite edge shadow transition (suggesting physical glass thickness)
+                val shadowEdgeAlpha = (0.20f * (1f - config.transparency) * config.depthIntensity).coerceIn(0.02f, 0.35f)
                 drawLine(
                     brush = Brush.horizontalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            Color.White.copy(alpha = bottomHighlightAlpha),
+                            Color.Black.copy(alpha = shadowEdgeAlpha * (0.4f + 0.6f * bottomLightFactor)),
                             Color.Transparent
                         )
                     ),
@@ -329,20 +425,54 @@ fun Modifier.liquidGlassSurface(
                     end = Offset(size.width * 0.88f, size.height - 1f),
                     strokeWidth = (config.glassThickness * 0.75f).coerceIn(0.5f, 2.0f).dp.toPx()
                 )
+
+                // 4. Subtle vertical side illumination along lit side
+                if (litSideAlpha > 0.08f && size.height > 20f) {
+                    val sideX = if (leftLightFactor >= rightLightFactor) 1f else size.width - 1f
+                    drawLine(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.White.copy(alpha = litSideAlpha * 0.70f),
+                                Color.Transparent
+                            )
+                        ),
+                        start = Offset(sideX, size.height * 0.10f),
+                        end = Offset(sideX, size.height * 0.90f),
+                        strokeWidth = (config.glassThickness * 0.8f).coerceIn(0.5f, 2.0f).dp.toPx()
+                    )
+                }
+
+                // 5. Subtle bottom rim ground bounce light (simulating light bouncing upward into glass)
+                val bounceAlpha = (0.12f * config.edgeHighlights * config.reflectionIntensity).coerceIn(0.02f, 0.30f)
+                drawLine(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color(0xFF80D8FF).copy(alpha = bounceAlpha),
+                            Color.White.copy(alpha = bounceAlpha * 1.3f),
+                            Color(0xFF80D8FF).copy(alpha = bounceAlpha),
+                            Color.Transparent
+                        )
+                    ),
+                    start = Offset(size.width * 0.15f, size.height - 1.5f),
+                    end = Offset(size.width * 0.85f, size.height - 1.5f),
+                    strokeWidth = 1.dp.toPx()
+                )
             }
 
-            // E. LAYER REFRACTION / LAYER SEPARATION (secondary inner offset glass contour)
+            // F. LAYER REFRACTION / LAYER SEPARATION (secondary inner offset glass contour)
             if (config.isEnabled && config.layerRefraction && size.width > 20f && size.height > 20f) {
                 val innerOffsetPx = 2.dp.toPx()
                 drawRoundRect(
                     brush = Brush.linearGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.14f * config.refractionAmount),
+                            Color.White.copy(alpha = 0.15f * config.refractionAmount),
                             Color.Transparent,
                             Color.Black.copy(alpha = 0.08f)
                         ),
-                        start = Offset(innerOffsetPx, innerOffsetPx),
-                        end = Offset(size.width - innerOffsetPx, size.height - innerOffsetPx)
+                        start = Offset(size.width * (0.5f - lightDirX * 0.4f), size.height * (0.5f - lightDirY * 0.4f)),
+                        end = Offset(size.width * (0.5f + lightDirX * 0.4f), size.height * (0.5f + lightDirY * 0.4f))
                     ),
                     topLeft = Offset(innerOffsetPx, innerOffsetPx),
                     size = Size(size.width - innerOffsetPx * 2, size.height - innerOffsetPx * 2),
@@ -350,7 +480,7 @@ fun Modifier.liquidGlassSurface(
                 )
             }
 
-            // F. REFLECTION INTENSITY (Diagonal light sheen across entire surface)
+            // G. REFLECTION INTENSITY (Diagonal light sheen across entire surface)
             if (config.isEnabled && config.reflectionIntensity > 0.05f) {
                 val sheenAlpha = (0.16f * config.reflectionIntensity).coerceIn(0.02f, 0.35f)
                 val reflectionBrush = Brush.linearGradient(
@@ -360,13 +490,13 @@ fun Modifier.liquidGlassSurface(
                         Color.White.copy(alpha = sheenAlpha * 0.5f),
                         Color.Transparent
                     ),
-                    start = Offset(0f, 0f),
-                    end = Offset(size.width, size.height)
+                    start = Offset(size.width * (0.5f - lightDirX * 0.5f), size.height * (0.5f - lightDirY * 0.5f)),
+                    end = Offset(size.width * (0.5f + lightDirX * 0.5f), size.height * (0.5f + lightDirY * 0.5f))
                 )
                 drawRect(brush = reflectionBrush)
             }
 
-            // G. NEON EDGE AMBIENT GLOW (if neonEnabled)
+            // H. NEON EDGE AMBIENT GLOW (if neonEnabled)
             if (config.neonEnabled) {
                 val neonGlowColor = Color(config.neonColorHex).copy(alpha = 0.22f * config.neonIntensity)
                 drawRect(
@@ -390,15 +520,25 @@ fun Modifier.liquidGlassSurface(
                     )
                 )
             } else if (config.isEnabled && config.edgeHighlights > 0f) {
-                // Beveled specular edge border
+                // Directional beveled specular edge border responding to lightAngleDegrees
+                val isLightFromTopLeft = (topLightFactor + leftLightFactor) >= (bottomLightFactor + rightLightFactor)
+                val litAlpha = (0.45f * config.edgeHighlights * (0.5f + 0.5f * (topLightFactor + leftLightFactor))).coerceIn(0.12f, 0.75f)
+                val midAlpha = (0.15f * config.edgeHighlights).coerceIn(0.03f, 0.35f)
+                val shadowAlpha = (0.22f * config.depthIntensity).coerceIn(0.05f, 0.40f)
                 Brush.linearGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = (0.38f * config.edgeHighlights).coerceIn(0.1f, 0.6f)),
-                        Color.White.copy(alpha = (0.12f * config.edgeHighlights).coerceIn(0.03f, 0.25f)),
-                        Color.Black.copy(alpha = 0.20f)
-                    ),
-                    start = Offset(0f, 0f),
-                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                    colors = if (isLightFromTopLeft) {
+                        listOf(
+                            Color.White.copy(alpha = litAlpha),
+                            Color.White.copy(alpha = midAlpha),
+                            Color.Black.copy(alpha = shadowAlpha)
+                        )
+                    } else {
+                        listOf(
+                            Color.Black.copy(alpha = shadowAlpha),
+                            Color.White.copy(alpha = midAlpha),
+                            Color.White.copy(alpha = litAlpha)
+                        )
+                    }
                 )
             } else {
                 SolidColor(Color.White.copy(alpha = 0.15f))

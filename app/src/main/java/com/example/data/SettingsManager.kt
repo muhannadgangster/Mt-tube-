@@ -453,6 +453,45 @@ class SettingsManager(context: Context) {
     private val _liquidGlassPerformanceMode = MutableStateFlow(prefs.getString("lg_perf_mode", "Quality") ?: "Quality")
     val liquidGlassPerformanceMode: StateFlow<String> = _liquidGlassPerformanceMode.asStateFlow()
 
+    // Directional Light Angle (0° .. 360°)
+    private val _liquidGlassLightAngle = MutableStateFlow(prefs.getFloat("lg_light_angle", 315f))
+    val liquidGlassLightAngle: StateFlow<Float> = _liquidGlassLightAngle.asStateFlow()
+
+    // 3D Liquid Drop Central Reflection
+    private val _liquidGlassDropReflectionEnabled = MutableStateFlow(prefs.getBoolean("lg_drop_refl_enabled", true))
+    val liquidGlassDropReflectionEnabled: StateFlow<Boolean> = _liquidGlassDropReflectionEnabled.asStateFlow()
+
+    private val _liquidGlassDropReflectionSize = MutableStateFlow(prefs.getFloat("lg_drop_refl_size", 0.55f))
+    val liquidGlassDropReflectionSize: StateFlow<Float> = _liquidGlassDropReflectionSize.asStateFlow()
+
+    private val _liquidGlassDropReflectionIntensity = MutableStateFlow(prefs.getFloat("lg_drop_refl_intensity", 0.75f))
+    val liquidGlassDropReflectionIntensity: StateFlow<Float> = _liquidGlassDropReflectionIntensity.asStateFlow()
+
+    private val _liquidGlassDropReflectionX = MutableStateFlow(prefs.getFloat("lg_drop_refl_x", 0.50f))
+    val liquidGlassDropReflectionX: StateFlow<Float> = _liquidGlassDropReflectionX.asStateFlow()
+
+    private val _liquidGlassDropReflectionY = MutableStateFlow(prefs.getFloat("lg_drop_refl_y", 0.35f))
+    val liquidGlassDropReflectionY: StateFlow<Float> = _liquidGlassDropReflectionY.asStateFlow()
+
+    private val _liquidGlassDropReflectionSoftness = MutableStateFlow(prefs.getFloat("lg_drop_refl_softness", 0.65f))
+    val liquidGlassDropReflectionSoftness: StateFlow<Float> = _liquidGlassDropReflectionSoftness.asStateFlow()
+
+    private val _liquidGlassDropSecondaryHighlight = MutableStateFlow(prefs.getFloat("lg_drop_sec_highlight", 0.45f))
+    val liquidGlassDropSecondaryHighlight: StateFlow<Float> = _liquidGlassDropSecondaryHighlight.asStateFlow()
+
+    // 3D Lens Geometry & Curvature
+    private val _liquidGlassConvexCurvature = MutableStateFlow(prefs.getFloat("lg_convex_curvature", 0.70f))
+    val liquidGlassConvexCurvature: StateFlow<Float> = _liquidGlassConvexCurvature.asStateFlow()
+
+    private val _liquidGlassBevelStrength = MutableStateFlow(prefs.getFloat("lg_bevel_strength", 0.80f))
+    val liquidGlassBevelStrength: StateFlow<Float> = _liquidGlassBevelStrength.asStateFlow()
+
+    private val _liquidGlassDepthIntensity = MutableStateFlow(prefs.getFloat("lg_depth_intensity", 0.75f))
+    val liquidGlassDepthIntensity: StateFlow<Float> = _liquidGlassDepthIntensity.asStateFlow()
+
+    private val _liquidGlassSmoothness = MutableStateFlow(prefs.getFloat("lg_glass_smoothness", 0.85f))
+    val liquidGlassSmoothness: StateFlow<Float> = _liquidGlassSmoothness.asStateFlow()
+
     // Subscribe Button Customization
     private val _subscribeGlassEnabled = MutableStateFlow(prefs.getBoolean("sub_glass_enabled", true))
     val subscribeGlassEnabled: StateFlow<Boolean> = _subscribeGlassEnabled.asStateFlow()
@@ -637,6 +676,66 @@ class SettingsManager(context: Context) {
         prefs.edit().putFloat("sub_edge_highlight", v).apply()
     }
 
+    fun setLiquidGlassLightAngle(degrees: Float) {
+        _liquidGlassLightAngle.value = degrees
+        prefs.edit().putFloat("lg_light_angle", degrees).apply()
+    }
+
+    fun setLiquidGlassDropReflectionEnabled(enabled: Boolean) {
+        _liquidGlassDropReflectionEnabled.value = enabled
+        prefs.edit().putBoolean("lg_drop_refl_enabled", enabled).apply()
+    }
+
+    fun setLiquidGlassDropReflectionSize(v: Float) {
+        _liquidGlassDropReflectionSize.value = v
+        prefs.edit().putFloat("lg_drop_refl_size", v).apply()
+    }
+
+    fun setLiquidGlassDropReflectionIntensity(v: Float) {
+        _liquidGlassDropReflectionIntensity.value = v
+        prefs.edit().putFloat("lg_drop_refl_intensity", v).apply()
+    }
+
+    fun setLiquidGlassDropReflectionX(v: Float) {
+        _liquidGlassDropReflectionX.value = v
+        prefs.edit().putFloat("lg_drop_refl_x", v).apply()
+    }
+
+    fun setLiquidGlassDropReflectionY(v: Float) {
+        _liquidGlassDropReflectionY.value = v
+        prefs.edit().putFloat("lg_drop_refl_y", v).apply()
+    }
+
+    fun setLiquidGlassDropReflectionSoftness(v: Float) {
+        _liquidGlassDropReflectionSoftness.value = v
+        prefs.edit().putFloat("lg_drop_refl_softness", v).apply()
+    }
+
+    fun setLiquidGlassDropSecondaryHighlight(v: Float) {
+        _liquidGlassDropSecondaryHighlight.value = v
+        prefs.edit().putFloat("lg_drop_sec_highlight", v).apply()
+    }
+
+    fun setLiquidGlassConvexCurvature(v: Float) {
+        _liquidGlassConvexCurvature.value = v
+        prefs.edit().putFloat("lg_convex_curvature", v).apply()
+    }
+
+    fun setLiquidGlassBevelStrength(v: Float) {
+        _liquidGlassBevelStrength.value = v
+        prefs.edit().putFloat("lg_bevel_strength", v).apply()
+    }
+
+    fun setLiquidGlassDepthIntensity(v: Float) {
+        _liquidGlassDepthIntensity.value = v
+        prefs.edit().putFloat("lg_depth_intensity", v).apply()
+    }
+
+    fun setLiquidGlassSmoothness(v: Float) {
+        _liquidGlassSmoothness.value = v
+        prefs.edit().putFloat("lg_glass_smoothness", v).apply()
+    }
+
     fun resetLiquidGlassDefaults() {
         setLiquidGlassMaster(true)
         setLiquidGlassTransparency(0.70f)
@@ -654,6 +753,18 @@ class SettingsManager(context: Context) {
         setLiquidGlassShadowElevation(6f)
         setLiquidGlassAnimationIntensity(1.0f)
         setLiquidGlassPerformanceMode("Quality")
+        setLiquidGlassLightAngle(315f)
+        setLiquidGlassDropReflectionEnabled(true)
+        setLiquidGlassDropReflectionSize(0.55f)
+        setLiquidGlassDropReflectionIntensity(0.75f)
+        setLiquidGlassDropReflectionX(0.50f)
+        setLiquidGlassDropReflectionY(0.35f)
+        setLiquidGlassDropReflectionSoftness(0.65f)
+        setLiquidGlassDropSecondaryHighlight(0.45f)
+        setLiquidGlassConvexCurvature(0.70f)
+        setLiquidGlassBevelStrength(0.80f)
+        setLiquidGlassDepthIntensity(0.75f)
+        setLiquidGlassSmoothness(0.85f)
         setSubscribeGlassEnabled(true)
         setSubscribeGlassTintHex(0xFFFFFFFFL)
         setSubscribeTransparency(0.85f)

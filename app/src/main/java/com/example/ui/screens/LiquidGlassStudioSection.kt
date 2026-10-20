@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.InterfaceBuilderManager
 import com.example.data.SettingsManager
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.components.FullSpectrumColorPicker
 import com.example.ui.components.GlassButton
 import com.example.ui.components.GlassIconButton
@@ -649,6 +650,176 @@ fun LazyListScope.liquidGlassStudioItems(
                 accentColor = accentColor,
                 onValueChange = { settingsManager.setLiquidGlassAnimationIntensity(it) },
                 testTag = "slider_animation_intensity"
+            )
+        }
+
+        // ==========================================
+        // 3D LIQUID-DROP CENTRAL REFLECTION
+        // ==========================================
+        item {
+            StudioSectionTitle("3D Liquid-Drop Central Reflection")
+        }
+
+        item {
+            val dropReflEnabled by settingsManager.liquidGlassDropReflectionEnabled.collectAsStateWithLifecycle()
+            StudioSwitch(
+                title = "Liquid-Drop Reflection",
+                subtitle = "Realistic organic water-droplet reflection curved across the glass surface",
+                checked = dropReflEnabled,
+                accentColor = accentColor,
+                onCheckedChange = { settingsManager.setLiquidGlassDropReflectionEnabled(it) }
+            )
+        }
+
+        item {
+            val dropReflEnabled by settingsManager.liquidGlassDropReflectionEnabled.collectAsStateWithLifecycle()
+            if (dropReflEnabled) {
+                val dropReflIntensity by settingsManager.liquidGlassDropReflectionIntensity.collectAsStateWithLifecycle()
+                StudioSlider(
+                    label = "Droplet Reflection Intensity",
+                    value = dropReflIntensity * 100f,
+                    valueRange = 0f..100f,
+                    unit = "%",
+                    accentColor = accentColor,
+                    onValueChange = { settingsManager.setLiquidGlassDropReflectionIntensity(it / 100f) },
+                    testTag = "slider_drop_intensity"
+                )
+            }
+        }
+
+        item {
+            val dropReflEnabled by settingsManager.liquidGlassDropReflectionEnabled.collectAsStateWithLifecycle()
+            if (dropReflEnabled) {
+                val dropReflSize by settingsManager.liquidGlassDropReflectionSize.collectAsStateWithLifecycle()
+                StudioSlider(
+                    label = "Droplet Reflection Size",
+                    value = dropReflSize * 100f,
+                    valueRange = 20f..120f,
+                    unit = "%",
+                    accentColor = accentColor,
+                    onValueChange = { settingsManager.setLiquidGlassDropReflectionSize(it / 100f) },
+                    testTag = "slider_drop_size"
+                )
+            }
+        }
+
+        item {
+            val dropReflEnabled by settingsManager.liquidGlassDropReflectionEnabled.collectAsStateWithLifecycle()
+            if (dropReflEnabled) {
+                val dropReflSoftness by settingsManager.liquidGlassDropReflectionSoftness.collectAsStateWithLifecycle()
+                StudioSlider(
+                    label = "Droplet Highlight Softness",
+                    value = dropReflSoftness * 100f,
+                    valueRange = 20f..150f,
+                    unit = "%",
+                    accentColor = accentColor,
+                    onValueChange = { settingsManager.setLiquidGlassDropReflectionSoftness(it / 100f) },
+                    testTag = "slider_drop_softness"
+                )
+            }
+        }
+
+        item {
+            val dropReflEnabled by settingsManager.liquidGlassDropReflectionEnabled.collectAsStateWithLifecycle()
+            if (dropReflEnabled) {
+                val dropSecHighlight by settingsManager.liquidGlassDropSecondaryHighlight.collectAsStateWithLifecycle()
+                StudioSlider(
+                    label = "Secondary Droplet Internal Reflection",
+                    value = dropSecHighlight * 100f,
+                    valueRange = 0f..100f,
+                    unit = "%",
+                    accentColor = accentColor,
+                    onValueChange = { settingsManager.setLiquidGlassDropSecondaryHighlight(it / 100f) },
+                    testTag = "slider_drop_sec_highlight"
+                )
+            }
+        }
+
+        item {
+            val dropReflEnabled by settingsManager.liquidGlassDropReflectionEnabled.collectAsStateWithLifecycle()
+            if (dropReflEnabled) {
+                val dropReflY by settingsManager.liquidGlassDropReflectionY.collectAsStateWithLifecycle()
+                StudioSlider(
+                    label = "Droplet Vertical Position (Y)",
+                    value = dropReflY * 100f,
+                    valueRange = 15f..85f,
+                    unit = "%",
+                    accentColor = accentColor,
+                    onValueChange = { settingsManager.setLiquidGlassDropReflectionY(it / 100f) },
+                    testTag = "slider_drop_pos_y"
+                )
+            }
+        }
+
+        // ==========================================
+        // 3D CURVATURE, GEOMETRY & DIRECTIONAL LIGHTING
+        // ==========================================
+        item {
+            StudioSectionTitle("3D Curvature, Geometry & Directional Lighting")
+        }
+
+        item {
+            val lightAngle by settingsManager.liquidGlassLightAngle.collectAsStateWithLifecycle()
+            StudioSlider(
+                label = "Directional Light Angle",
+                value = lightAngle,
+                valueRange = 0f..360f,
+                unit = "°",
+                accentColor = accentColor,
+                onValueChange = { settingsManager.setLiquidGlassLightAngle(it) },
+                testTag = "slider_light_angle"
+            )
+        }
+
+        item {
+            val convexCurvature by settingsManager.liquidGlassConvexCurvature.collectAsStateWithLifecycle()
+            StudioSlider(
+                label = "Convex 3D Lens Curvature",
+                value = convexCurvature * 100f,
+                valueRange = 0f..100f,
+                unit = "%",
+                accentColor = accentColor,
+                onValueChange = { settingsManager.setLiquidGlassConvexCurvature(it / 100f) },
+                testTag = "slider_convex_curvature"
+            )
+        }
+
+        item {
+            val bevelStrength by settingsManager.liquidGlassBevelStrength.collectAsStateWithLifecycle()
+            StudioSlider(
+                label = "Curved Edge Bevel Strength",
+                value = bevelStrength * 100f,
+                valueRange = 10f..100f,
+                unit = "%",
+                accentColor = accentColor,
+                onValueChange = { settingsManager.setLiquidGlassBevelStrength(it / 100f) },
+                testTag = "slider_bevel_strength"
+            )
+        }
+
+        item {
+            val depthIntensity by settingsManager.liquidGlassDepthIntensity.collectAsStateWithLifecycle()
+            StudioSlider(
+                label = "Overall 3D Depth Intensity",
+                value = depthIntensity * 100f,
+                valueRange = 10f..100f,
+                unit = "%",
+                accentColor = accentColor,
+                onValueChange = { settingsManager.setLiquidGlassDepthIntensity(it / 100f) },
+                testTag = "slider_depth_intensity"
+            )
+        }
+
+        item {
+            val glassSmoothness by settingsManager.liquidGlassSmoothness.collectAsStateWithLifecycle()
+            StudioSlider(
+                label = "Surface Polished Smoothness",
+                value = glassSmoothness * 100f,
+                valueRange = 10f..100f,
+                unit = "%",
+                accentColor = accentColor,
+                onValueChange = { settingsManager.setLiquidGlassSmoothness(it / 100f) },
+                testTag = "slider_glass_smoothness"
             )
         }
 

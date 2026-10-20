@@ -275,6 +275,19 @@ class MainActivity : ComponentActivity() {
             val opticalChromaticDispersion by viewModel.settingsManager.opticalChromaticDispersion.collectAsStateWithLifecycle()
             val springPhysicsEnabled by viewModel.settingsManager.springPhysicsEnabled.collectAsStateWithLifecycle()
 
+            val lgLightAngle by viewModel.settingsManager.liquidGlassLightAngle.collectAsStateWithLifecycle()
+            val lgDropReflEnabled by viewModel.settingsManager.liquidGlassDropReflectionEnabled.collectAsStateWithLifecycle()
+            val lgDropReflSize by viewModel.settingsManager.liquidGlassDropReflectionSize.collectAsStateWithLifecycle()
+            val lgDropReflIntensity by viewModel.settingsManager.liquidGlassDropReflectionIntensity.collectAsStateWithLifecycle()
+            val lgDropReflX by viewModel.settingsManager.liquidGlassDropReflectionX.collectAsStateWithLifecycle()
+            val lgDropReflY by viewModel.settingsManager.liquidGlassDropReflectionY.collectAsStateWithLifecycle()
+            val lgDropReflSoftness by viewModel.settingsManager.liquidGlassDropReflectionSoftness.collectAsStateWithLifecycle()
+            val lgDropSecHighlight by viewModel.settingsManager.liquidGlassDropSecondaryHighlight.collectAsStateWithLifecycle()
+            val lgConvexCurvature by viewModel.settingsManager.liquidGlassConvexCurvature.collectAsStateWithLifecycle()
+            val lgBevelStrength by viewModel.settingsManager.liquidGlassBevelStrength.collectAsStateWithLifecycle()
+            val lgDepthIntensity by viewModel.settingsManager.liquidGlassDepthIntensity.collectAsStateWithLifecycle()
+            val lgSmoothness by viewModel.settingsManager.liquidGlassSmoothness.collectAsStateWithLifecycle()
+
             val glassConfig = com.example.ui.theme.LiquidGlassStyleConfig(
                 isEnabled = lgMaster,
                 transparency = lgTransparency,
@@ -297,6 +310,18 @@ class MainActivity : ComponentActivity() {
                 specularHighlight = lgSpecular,
                 borderThicknessDp = lgBorderThickness,
                 isDarkGlass = uiTheme != "Liquid Glass (Light)" && uiTheme != "Light Mode",
+                lightAngleDegrees = lgLightAngle,
+                liquidDropReflectionEnabled = lgDropReflEnabled,
+                dropReflectionSize = lgDropReflSize,
+                dropReflectionIntensity = lgDropReflIntensity,
+                dropReflectionX = lgDropReflX,
+                dropReflectionY = lgDropReflY,
+                dropReflectionSoftness = lgDropReflSoftness,
+                dropSecondaryHighlight = lgDropSecHighlight,
+                convexCurvatureIntensity = lgConvexCurvature,
+                bevelStrength = lgBevelStrength,
+                depthIntensity = lgDepthIntensity,
+                glassSmoothness = lgSmoothness,
                 opticalShaderEnabled = opticalShaderEnabled,
                 edgeCurvaturePower = opticalCurvaturePower,
                 chromaticDispersion = opticalChromaticDispersion,
