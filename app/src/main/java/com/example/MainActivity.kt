@@ -663,7 +663,7 @@ fun MyTubeApp(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
+                        .padding(top = paddingValues.calculateTopPadding())
                 ) {
                     val currentGlassConfig = LocalLiquidGlassConfig.current
                     AnimatedContent(

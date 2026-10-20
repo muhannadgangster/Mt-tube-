@@ -241,11 +241,26 @@ fun Modifier.liquidGlassSurface(
             // A. Base translucent glass material
             drawRect(color = baseGlassColor)
 
+            // A2. FROSTED DIFFUSION / BACKGROUND BLUR EFFECT (Diffuses background pixels under glass without touching foreground)
+            if (config.isEnabled && config.blurRadius > 0.5f) {
+                val blurFactor = (config.blurRadius / 50f).coerceIn(0.05f, 1f)
+                val diffusionBrush = Brush.radialGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.08f * blurFactor * config.vibrancy),
+                        Color(0xFF38BDF8).copy(alpha = 0.04f * blurFactor * config.vibrancy),
+                        Color.Transparent
+                    ),
+                    center = Offset(size.width / 2f, size.height / 2f),
+                    radius = (size.width.coerceAtLeast(size.height)) * 0.75f
+                )
+                drawRect(brush = diffusionBrush)
+            }
+
             // B. DEPTH GRADIENT: Layered depth illumination (only if depthEnabled is true)
             if (config.isEnabled && config.depthEnabled) {
                 val depthBrush = Brush.verticalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.07f * config.vibrancy),
+                        Color.White.copy(alpha = 0.10f * config.vibrancy),
                         Color.Transparent,
                         Color.Black.copy(alpha = 0.18f * (1f - config.transparency))
                     )
@@ -258,9 +273,9 @@ fun Modifier.liquidGlassSurface(
                 val causticHeightFactor = (0.20f + 0.50f * config.refractionHeight).coerceIn(0.20f, 0.75f)
                 val causticBrush = Brush.linearGradient(
                     colors = listOf(
-                        Color(0xFF80D8FF).copy(alpha = (0.12f * config.refractionAmount * config.vibrancy).coerceIn(0.01f, 0.25f)),
-                        Color.White.copy(alpha = (0.16f * config.refractionAmount).coerceIn(0.02f, 0.30f)),
-                        Color(0xFFEA80FC).copy(alpha = (0.08f * config.refractionAmount * config.vibrancy).coerceIn(0.01f, 0.18f)),
+                        Color(0xFF80D8FF).copy(alpha = (0.14f * config.refractionAmount * config.vibrancy).coerceIn(0.01f, 0.28f)),
+                        Color.White.copy(alpha = (0.18f * config.refractionAmount).coerceIn(0.02f, 0.32f)),
+                        Color(0xFFEA80FC).copy(alpha = (0.09f * config.refractionAmount * config.vibrancy).coerceIn(0.01f, 0.20f)),
                         Color.Transparent
                     ),
                     start = Offset(0f, 0f),
@@ -274,7 +289,7 @@ fun Modifier.liquidGlassSurface(
 
             // D. EDGE HIGHLIGHTS & SPECULAR BEVEL (only if edgeHighlights > 0)
             if (config.isEnabled && config.edgeHighlights > 0.05f) {
-                val highlightAlpha = (0.45f * config.edgeHighlights).coerceIn(0.05f, 0.65f)
+                val highlightAlpha = (0.48f * config.edgeHighlights).coerceIn(0.05f, 0.70f)
                 // 1. Subtle luminous bevel line along top rim
                 drawLine(
                     brush = Brush.horizontalGradient(
@@ -292,13 +307,28 @@ fun Modifier.liquidGlassSurface(
                 // 2. Corner specular flare
                 val specularBrush = Brush.radialGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.28f * config.edgeHighlights),
+                        Color.White.copy(alpha = 0.32f * config.edgeHighlights),
                         Color.Transparent
                     ),
                     center = Offset(size.width * 0.12f, size.height * 0.12f),
                     radius = (size.width.coerceAtLeast(size.height)) * 0.35f
                 )
                 drawRect(brush = specularBrush)
+
+                // 3. Bottom reflective rim & ground bounce light
+                val bottomHighlightAlpha = (0.24f * config.edgeHighlights).coerceIn(0.02f, 0.45f)
+                drawLine(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.White.copy(alpha = bottomHighlightAlpha),
+                            Color.Transparent
+                        )
+                    ),
+                    start = Offset(size.width * 0.12f, size.height - 1f),
+                    end = Offset(size.width * 0.88f, size.height - 1f),
+                    strokeWidth = (config.glassThickness * 0.75f).coerceIn(0.5f, 2.0f).dp.toPx()
+                )
             }
 
             // E. LAYER REFRACTION / LAYER SEPARATION (secondary inner offset glass contour)
