@@ -250,6 +250,22 @@ fun Modifier.liquidGlassSurface(
                 )
             } else Modifier
         )
+        .then(
+            if (config.isEnabled && config.opticalShaderEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Modifier.graphicsLayer {
+                    try {
+                        val shader = com.mytube.ui.glass.LiquidGlassShader.create()
+                        shader.setFloatUniform("resolution", size.width, size.height)
+                        shader.setFloatUniform("cornerRadius", config.cornerRadiusDp * density)
+                        shader.setFloatUniform("strength", config.refractionAmount * 1.5f)
+                        shader.setFloatUniform("time", (System.currentTimeMillis() % 100000L) / 1000f)
+                        renderEffect = AndroidRenderEffect
+                            .createRuntimeShaderEffect(shader, "background")
+                            .asComposeRenderEffect()
+                    } catch (_: Exception) {}
+                }
+            } else Modifier
+        )
         .clip(shape)
         .drawBehind {
             // A. Base translucent liquid glass material

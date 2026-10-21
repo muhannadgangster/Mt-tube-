@@ -207,6 +207,19 @@ fun CustomizeInterfaceScreen(
     val shortsActionIconScale by settingsManager.shortsActionIconScale.collectAsStateWithLifecycle()
     val shortsOverlayAlpha by settingsManager.shortsOverlayAlpha.collectAsStateWithLifecycle()
     val shortsFeedGridCount by settingsManager.shortsFeedGridCount.collectAsStateWithLifecycle()
+    var showDemoShortsEditor by remember { mutableStateOf(false) }
+
+    val searchBgType by settingsManager.searchBackgroundType.collectAsStateWithLifecycle()
+    val searchBgColorHex by settingsManager.searchBackgroundCustomColorHex.collectAsStateWithLifecycle()
+    val searchGlassTrans by settingsManager.searchGlassTransparency.collectAsStateWithLifecycle()
+    val searchGlassRefract by settingsManager.searchGlassRefraction.collectAsStateWithLifecycle()
+    val searchGlassHigh by settingsManager.searchGlassHighlights.collectAsStateWithLifecycle()
+
+    val subBgType by settingsManager.subscriptionsBackgroundType.collectAsStateWithLifecycle()
+    val subBgColorHex by settingsManager.subscriptionsBackgroundCustomColorHex.collectAsStateWithLifecycle()
+    val subGlassTrans by settingsManager.subscriptionsGlassTransparency.collectAsStateWithLifecycle()
+    val subGlassRefract by settingsManager.subscriptionsGlassRefraction.collectAsStateWithLifecycle()
+    val subGlassHigh by settingsManager.subscriptionsGlassHighlights.collectAsStateWithLifecycle()
 
     val navBarHeightDp by settingsManager.navBarHeightDp.collectAsStateWithLifecycle()
     val navBarGlassEnabled by settingsManager.navBarGlassEnabled.collectAsStateWithLifecycle()
@@ -284,6 +297,18 @@ fun CustomizeInterfaceScreen(
         return
     }
 
+    if (showDemoShortsEditor) {
+        BackHandler {
+            showDemoShortsEditor = false
+        }
+        DemoShortsEditorScreen(
+            settingsManager = settingsManager,
+            onBack = { showDemoShortsEditor = false },
+            modifier = modifier
+        )
+        return
+    }
+
     // Intercept back key when in a sub-section
     BackHandler {
         if (activeBuilderSection != null) {
@@ -301,7 +326,8 @@ fun CustomizeInterfaceScreen(
         "🧭 Navigation",
         "👤 Profile",
         "🔔 Notifications",
-        "✨ Shaders & Physics"
+        "✨ Shaders & Physics",
+        "🔍 Search & Subscriptions"
     )
 
     Column(
@@ -1329,6 +1355,62 @@ fun CustomizeInterfaceScreen(
                         // Shorts Screen
                         item { SectionHeader("Shorts Screen Controls") }
 
+                        // Dedicated Demo Shorts Editor (Settings -> Customize Interface -> Shorts -> Demo Shorts Editor)
+                        item {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                                    .clickable { showDemoShortsEditor = true }
+                                    .testTag("open_demo_shorts_editor_card"),
+                                colors = CardDefaults.cardColors(containerColor = if (isGlassTheme) Color.Transparent else YtSurfaceDark),
+                                shape = RoundedCornerShape(14.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, if (isGlassTheme) YtGlassDarkBorder else YtBorder)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(42.dp)
+                                            .clip(CircleShape)
+                                            .background(accentColor.copy(alpha = 0.2f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = "Edit Shorts",
+                                            tint = accentColor,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Demo Shorts Editor",
+                                            color = YtTextPrimary,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "Interactive layout preview • Long-press 3s to drag icons • Drag to trash to remove",
+                                            color = YtTextSecondary,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                        contentDescription = null,
+                                        tint = YtTextSecondary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+
                         // Shorts Feed Grid (2, 4, 6, 8 options)
                         item {
                             Column(
@@ -1549,6 +1631,127 @@ fun CustomizeInterfaceScreen(
                                 checked = springPhysicsEnabled,
                                 accentColor = accentColor,
                                 onCheckedChange = { settingsManager.setSpringPhysicsEnabled(it) }
+                            )
+                        }
+                    }
+
+                    8 -> {
+                        // Search & Subscriptions Background & Liquid Glass Customization
+                        item { SectionHeader("Search Screen Background Customization") }
+                        item {
+                            val searchTypes = listOf("Default Dark", "Deep Ocean Blue", "Glass Prism", "Obsidian Smoke", "Custom Color", "App Wallpaper")
+                            OptionSelectorRow(
+                                label = "Search Background Style",
+                                options = searchTypes,
+                                selected = searchBgType,
+                                accentColor = accentColor,
+                                onSelect = { settingsManager.setSearchBackgroundType(it) }
+                            )
+                        }
+                        if (searchBgType == "Custom Color") {
+                            item {
+                                val palette = listOf(
+                                    "Deep Indigo" to 0xFF141928L,
+                                    "Midnight Navy" to 0xFF0B192CL,
+                                    "Wine Ruby" to 0xFF2A0812L,
+                                    "Emerald Shadow" to 0xFF062319L,
+                                    "Amethyst Dark" to 0xFF1D0D2CL
+                                )
+                                ColorPickerRow(
+                                    label = "Custom Search Background Tint",
+                                    colors = palette,
+                                    selectedHex = searchBgColorHex,
+                                    onColorSelected = { settingsManager.setSearchBackgroundCustomColorHex(it) }
+                                )
+                            }
+                        }
+                        item {
+                            SliderControl(
+                                label = "Search Glass Transparency",
+                                value = searchGlassTrans * 100f,
+                                valueRange = 10f..95f,
+                                unit = "%",
+                                accentColor = accentColor,
+                                onValueChange = { settingsManager.setSearchGlassTransparency(it / 100f) }
+                            )
+                        }
+                        item {
+                            SliderControl(
+                                label = "Search Refraction Strength",
+                                value = searchGlassRefract * 100f,
+                                valueRange = 0f..100f,
+                                unit = "%",
+                                accentColor = accentColor,
+                                onValueChange = { settingsManager.setSearchGlassRefraction(it / 100f) }
+                            )
+                        }
+                        item {
+                            SliderControl(
+                                label = "Search Edge Highlights",
+                                value = searchGlassHigh * 100f,
+                                valueRange = 0f..100f,
+                                unit = "%",
+                                accentColor = accentColor,
+                                onValueChange = { settingsManager.setSearchGlassHighlights(it / 100f) }
+                            )
+                        }
+
+                        item { SectionHeader("Subscriptions Screen Background Customization") }
+                        item {
+                            val subTypes = listOf("Default Dark", "Cosmic Purple", "Midnight Teal", "Frosted Amber", "Custom Color", "App Wallpaper")
+                            OptionSelectorRow(
+                                label = "Subscriptions Background Style",
+                                options = subTypes,
+                                selected = subBgType,
+                                accentColor = accentColor,
+                                onSelect = { settingsManager.setSubscriptionsBackgroundType(it) }
+                            )
+                        }
+                        if (subBgType == "Custom Color") {
+                            item {
+                                val subPalette = listOf(
+                                    "Cosmic Violet" to 0xFF181024L,
+                                    "Teal Abyss" to 0xFF051C1EL,
+                                    "Crimson Dusk" to 0xFF240A0FL,
+                                    "Forest Shadow" to 0xFF0A1F13L,
+                                    "Bronze Night" to 0xFF221508L
+                                )
+                                ColorPickerRow(
+                                    label = "Custom Subscriptions Background Tint",
+                                    colors = subPalette,
+                                    selectedHex = subBgColorHex,
+                                    onColorSelected = { settingsManager.setSubscriptionsBackgroundCustomColorHex(it) }
+                                )
+                            }
+                        }
+                        item {
+                            SliderControl(
+                                label = "Subscriptions Glass Transparency",
+                                value = subGlassTrans * 100f,
+                                valueRange = 10f..95f,
+                                unit = "%",
+                                accentColor = accentColor,
+                                onValueChange = { settingsManager.setSubscriptionsGlassTransparency(it / 100f) }
+                            )
+                        }
+                        item {
+                            SliderControl(
+                                label = "Subscriptions Refraction Strength",
+                                value = subGlassRefract * 100f,
+                                valueRange = 0f..100f,
+                                unit = "%",
+                                accentColor = accentColor,
+                                onValueChange = { settingsManager.setSubscriptionsGlassRefraction(it / 100f) }
+                            )
+                        }
+                        item {
+                            SliderControl(
+                                label = "Subscriptions Edge Highlights",
+                                value = subGlassHigh * 100f,
+                                valueRange = 0f..100f,
+                                unit = "%",
+                                accentColor = accentColor,
+                                onValueChange = { settingsManager.setSubscriptionsGlassHighlights(it / 100f) }
                             )
                         }
                     }

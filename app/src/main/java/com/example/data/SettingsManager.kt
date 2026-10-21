@@ -2,6 +2,8 @@ package com.example.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.data.model.ShortsActionConfig
+import com.example.data.model.ShortsActionDefaults
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -1011,6 +1013,138 @@ class SettingsManager(context: Context) {
     fun setSpringPhysicsEnabled(v: Boolean) {
         _springPhysicsEnabled.value = v
         prefs.edit().putBoolean("spring_physics_enabled", v).apply()
+    }
+
+    // Customizable Shorts Action Icons (Positions, Visibility, Drag-and-Drop persistence)
+    private fun loadShortsActions(): List<ShortsActionConfig> {
+        val savedSet = prefs.getStringSet("shorts_action_configs_v2", null)
+        if (savedSet.isNullOrEmpty()) {
+            return ShortsActionDefaults.getDefaultActions()
+        }
+        val loaded = savedSet.mapNotNull { ShortsActionConfig.fromSerialized(it) }
+        val defaults = ShortsActionDefaults.getDefaultActions()
+        return defaults.map { def ->
+            loaded.find { it.id == def.id } ?: def
+        }
+    }
+
+    private val _shortsActionConfigs = MutableStateFlow<List<ShortsActionConfig>>(loadShortsActions())
+    val shortsActionConfigs: StateFlow<List<ShortsActionConfig>> = _shortsActionConfigs.asStateFlow()
+
+    fun saveShortsActionConfigs(configs: List<ShortsActionConfig>) {
+        _shortsActionConfigs.value = configs
+        val set = configs.map { it.toSerialized() }.toSet()
+        prefs.edit().putStringSet("shorts_action_configs_v2", set).apply()
+    }
+
+    fun updateShortsActionPosition(id: String, xRatio: Float, yRatio: Float) {
+        val current = _shortsActionConfigs.value.toMutableList()
+        val idx = current.indexOfFirst { it.id == id }
+        if (idx != -1) {
+            val old = current[idx]
+            current[idx] = old.copy(
+                xRatio = xRatio.coerceIn(0.04f, 0.94f),
+                yRatio = yRatio.coerceIn(0.04f, 0.95f)
+            )
+            saveShortsActionConfigs(current)
+        }
+    }
+
+    fun setShortsActionVisible(id: String, isVisible: Boolean) {
+        val current = _shortsActionConfigs.value.toMutableList()
+        val idx = current.indexOfFirst { it.id == id }
+        if (idx != -1) {
+            val old = current[idx]
+            if (!isVisible && old.isProtected) return
+            current[idx] = old.copy(isVisible = isVisible)
+            saveShortsActionConfigs(current)
+        }
+    }
+
+    fun resetShortsActionConfigs() {
+        saveShortsActionConfigs(ShortsActionDefaults.getDefaultActions())
+    }
+
+    // Search Screen Background & Liquid Glass Customization
+    private val _searchBackgroundType = MutableStateFlow(prefs.getString("search_bg_type", "Default Dark") ?: "Default Dark")
+    val searchBackgroundType: StateFlow<String> = _searchBackgroundType.asStateFlow()
+
+    private val _searchBackgroundCustomColorHex = MutableStateFlow(prefs.getLong("search_bg_color_hex", 0xFF141928L))
+    val searchBackgroundCustomColorHex: StateFlow<Long> = _searchBackgroundCustomColorHex.asStateFlow()
+
+    private val _searchGlassTransparency = MutableStateFlow(prefs.getFloat("search_glass_transparency", 0.70f))
+    val searchGlassTransparency: StateFlow<Float> = _searchGlassTransparency.asStateFlow()
+
+    private val _searchGlassRefraction = MutableStateFlow(prefs.getFloat("search_glass_refraction", 0.65f))
+    val searchGlassRefraction: StateFlow<Float> = _searchGlassRefraction.asStateFlow()
+
+    private val _searchGlassHighlights = MutableStateFlow(prefs.getFloat("search_glass_highlights", 0.80f))
+    val searchGlassHighlights: StateFlow<Float> = _searchGlassHighlights.asStateFlow()
+
+    fun setSearchBackgroundType(type: String) {
+        _searchBackgroundType.value = type
+        prefs.edit().putString("search_bg_type", type).apply()
+    }
+
+    fun setSearchBackgroundCustomColorHex(hex: Long) {
+        _searchBackgroundCustomColorHex.value = hex
+        prefs.edit().putLong("search_bg_color_hex", hex).apply()
+    }
+
+    fun setSearchGlassTransparency(value: Float) {
+        _searchGlassTransparency.value = value
+        prefs.edit().putFloat("search_glass_transparency", value).apply()
+    }
+
+    fun setSearchGlassRefraction(value: Float) {
+        _searchGlassRefraction.value = value
+        prefs.edit().putFloat("search_glass_refraction", value).apply()
+    }
+
+    fun setSearchGlassHighlights(value: Float) {
+        _searchGlassHighlights.value = value
+        prefs.edit().putFloat("search_glass_highlights", value).apply()
+    }
+
+    // Subscriptions Screen Background & Liquid Glass Customization
+    private val _subscriptionsBackgroundType = MutableStateFlow(prefs.getString("sub_bg_type", "Default Dark") ?: "Default Dark")
+    val subscriptionsBackgroundType: StateFlow<String> = _subscriptionsBackgroundType.asStateFlow()
+
+    private val _subscriptionsBackgroundCustomColorHex = MutableStateFlow(prefs.getLong("sub_bg_color_hex", 0xFF181024L))
+    val subscriptionsBackgroundCustomColorHex: StateFlow<Long> = _subscriptionsBackgroundCustomColorHex.asStateFlow()
+
+    private val _subscriptionsGlassTransparency = MutableStateFlow(prefs.getFloat("sub_glass_transparency", 0.70f))
+    val subscriptionsGlassTransparency: StateFlow<Float> = _subscriptionsGlassTransparency.asStateFlow()
+
+    private val _subscriptionsGlassRefraction = MutableStateFlow(prefs.getFloat("sub_glass_refraction", 0.65f))
+    val subscriptionsGlassRefraction: StateFlow<Float> = _subscriptionsGlassRefraction.asStateFlow()
+
+    private val _subscriptionsGlassHighlights = MutableStateFlow(prefs.getFloat("sub_glass_highlights", 0.80f))
+    val subscriptionsGlassHighlights: StateFlow<Float> = _subscriptionsGlassHighlights.asStateFlow()
+
+    fun setSubscriptionsBackgroundType(type: String) {
+        _subscriptionsBackgroundType.value = type
+        prefs.edit().putString("sub_bg_type", type).apply()
+    }
+
+    fun setSubscriptionsBackgroundCustomColorHex(hex: Long) {
+        _subscriptionsBackgroundCustomColorHex.value = hex
+        prefs.edit().putLong("sub_bg_color_hex", hex).apply()
+    }
+
+    fun setSubscriptionsGlassTransparency(value: Float) {
+        _subscriptionsGlassTransparency.value = value
+        prefs.edit().putFloat("sub_glass_transparency", value).apply()
+    }
+
+    fun setSubscriptionsGlassRefraction(value: Float) {
+        _subscriptionsGlassRefraction.value = value
+        prefs.edit().putFloat("sub_glass_refraction", value).apply()
+    }
+
+    fun setSubscriptionsGlassHighlights(value: Float) {
+        _subscriptionsGlassHighlights.value = value
+        prefs.edit().putFloat("sub_glass_highlights", value).apply()
     }
 
     fun resetAllAppearance() {
