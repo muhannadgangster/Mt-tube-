@@ -851,6 +851,10 @@ class SettingsManager(context: Context) {
     private val _shortsOverlayAlpha = MutableStateFlow(prefs.getFloat("shorts_overlay_alpha", 0.85f))
     val shortsOverlayAlpha: StateFlow<Float> = _shortsOverlayAlpha.asStateFlow()
 
+    // Shorts Feed Grid (2, 4, 6, 8 Shorts per feed section)
+    private val _shortsFeedGridCount = MutableStateFlow(prefs.getInt("shorts_feed_grid_count", 4))
+    val shortsFeedGridCount: StateFlow<Int> = _shortsFeedGridCount.asStateFlow()
+
     // C. Shorts & Bottom Navigation Customization
     private val _navBarHeightDp = MutableStateFlow(prefs.getFloat("nav_bar_height_dp", 54f))
     val navBarHeightDp: StateFlow<Float> = _navBarHeightDp.asStateFlow()
@@ -931,6 +935,12 @@ class SettingsManager(context: Context) {
     fun setShortsOverlayAlpha(v: Float) {
         _shortsOverlayAlpha.value = v
         prefs.edit().putFloat("shorts_overlay_alpha", v).apply()
+    }
+
+    fun setShortsFeedGridCount(count: Int) {
+        val validCount = if (count in listOf(2, 4, 6, 8)) count else 4
+        _shortsFeedGridCount.value = validCount
+        prefs.edit().putInt("shorts_feed_grid_count", validCount).apply()
     }
 
     fun setNavBarHeightDp(v: Float) {

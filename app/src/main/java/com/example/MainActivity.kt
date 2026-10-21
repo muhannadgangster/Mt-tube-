@@ -31,6 +31,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateFloatAsState
 import com.example.ui.theme.LocalLiquidGlassConfig
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -39,7 +40,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -47,13 +50,21 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -71,6 +82,7 @@ import com.example.ui.components.YouTubeBottomBar
 import com.example.ui.components.YouTubeSplashScreen
 import com.example.ui.components.YouTubeTopBar
 import com.example.ui.screens.CustomPageRendererScreen
+import com.example.ui.screens.DownloadsScreen
 import com.example.ui.screens.FirstLaunchOnboardingScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.LibraryScreen
@@ -414,6 +426,8 @@ fun MyTubeApp(
     val watchLaterVideos by viewModel.watchLaterVideos.collectAsStateWithLifecycle()
     val downloadedVideos by viewModel.downloadedVideos.collectAsStateWithLifecycle()
     val historyVideos by viewModel.historyVideos.collectAsStateWithLifecycle()
+    val shortsFeedGridCount by viewModel.settingsManager.shortsFeedGridCount.collectAsStateWithLifecycle()
+    val showDownloadsScreen by viewModel.showDownloadsScreen.collectAsStateWithLifecycle()
 
     val isScanningMedia by mediaScannerViewModel.isScanning.collectAsStateWithLifecycle()
     val mediaScanStatus by mediaScannerViewModel.statusMessage.collectAsStateWithLifecycle()
@@ -637,12 +651,263 @@ fun MyTubeApp(
                 modifier = Modifier.fillMaxSize()
             )
         } else {
-            // Main App Shell with Top Bar and Bottom Bar
+            // Density & Metrics for Independent Liquid Glass Top Bar Animation
+            val density = LocalDensity.current
+            val statusBarTopDp = with(density) { WindowInsets.statusBars.getTop(density).toDp() }
+            val topBarTotalHeightDp = 56.dp + statusBarTopDp
+            val topBarTotalHeightPx = with(density) { topBarTotalHeightDp.toPx() }
+
+            val homeListState = rememberLazyListState()
+            var topBarOffsetPx by remember { mutableFloatStateOf(0f) }
+
+            val homeNestedScrollConnection = remember(topBarTotalHeightPx) {
+                object : NestedScrollConnection {
+                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                        if (selectedTab == 0) {
+                            val delta = available.y
+                            if (kotlin.math.abs(delta) > 0.5f) {
+                                val newOffset = (topBarOffsetPx + delta).coerceIn(-topBarTotalHeightPx, 0f)
+                                topBarOffsetPx = newOffset
+                            }
+                        }
+                        return Offset.Zero
+                    }
+                }
+            }
+
+            LaunchedEffect(homeListState.firstVisibleItemIndex, homeListState.firstVisibleItemScrollOffset) {
+                if (homeListState.firstVisibleItemIndex == 0 && homeListState.firstVisibleItemScrollOffset == 0) {
+                    topBarOffsetPx = 0f
+                }
+            }
+
+            LaunchedEffect(selectedTab) {
+                if (selectedTab != 0) {
+                    topBarOffsetPx = 0f
+                }
+            }
+
+            val animatedTopBarOffset by animateFloatAsState(
+                targetValue = topBarOffsetPx,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMedium
+                ),
+                label = "top_bar_offset"
+            )
+
+            val topBarFraction = if (topBarTotalHeightPx > 0f) {
+                ((topBarTotalHeightPx + animatedTopBarOffset) / topBarTotalHeightPx).coerceIn(0f, 1f)
+            } else 1f
+
+            // Main App Shell with Independent Top Bar and Stationary Bottom Bar
             Scaffold(
                 containerColor = if (hasCustomWallpaper || isGlassTheme) Color.Transparent else MaterialTheme.colorScheme.background,
                 snackbarHost = { SnackbarHost(snackbarHostState) },
-                topBar = {
-                    if (selectedTab != 1 && selectedTab != 4) { // Hide top bar on Shorts (1) and 'You' (4) tabs to prevent duplicate header
+                bottomBar = {
+                    // Stationary Bottom Navigation Bar (Stays strictly in place during Home scrolling; hidden on Shorts)
+                    if (selectedTab != 1) {
+                        YouTubeBottomBar(
+                            selectedTab = selectedTab,
+                            onTabSelected = { viewModel.selectTab(it) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .navigationBarsPadding()
+                                .padding(horizontal = 16.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            ) { paddingValues ->
+                val animatedTopPadding = if (selectedTab == 0) {
+                    topBarTotalHeightDp * topBarFraction
+                } else if (selectedTab == 3) {
+                    topBarTotalHeightDp
+                } else {
+                    0.dp
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = paddingValues.calculateBottomPadding())
+                        .then(
+                            if (selectedTab == 0) {
+                                Modifier.nestedScroll(homeNestedScrollConnection)
+                            } else Modifier
+                        )
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = animatedTopPadding)
+                    ) {
+                        val currentGlassConfig = LocalLiquidGlassConfig.current
+                        AnimatedContent(
+                            targetState = selectedTab,
+                            transitionSpec = {
+                                if (currentGlassConfig.springPhysicsEnabled) {
+                                    val direction = if (targetState > initialState) 1 else -1
+                                    (slideInHorizontally(
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioLowBouncy,
+                                            stiffness = Spring.StiffnessMediumLow
+                                        ),
+                                        initialOffsetX = { fullWidth -> fullWidth * direction / 3 }
+                                    ) + fadeIn(
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioNoBouncy,
+                                            stiffness = Spring.StiffnessMediumLow
+                                        )
+                                    )).togetherWith(
+                                        slideOutHorizontally(
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                                stiffness = Spring.StiffnessMediumLow
+                                            ),
+                                            targetOffsetX = { fullWidth -> -fullWidth * direction / 4 }
+                                        ) + fadeOut(
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                                stiffness = Spring.StiffnessMediumLow
+                                            )
+                                        )
+                                    )
+                                } else {
+                                    fadeIn() togetherWith fadeOut()
+                                }
+                            },
+                            label = "tab_spring_transition"
+                        ) { tab ->
+                            when (tab) {
+                                0 -> HomeScreen(
+                                    videos = filteredVideos,
+                                    shortsList = shortsVideos,
+                                    selectedFilter = selectedFilter,
+                                    isRefreshing = isRefreshing,
+                                    isScanningMedia = isScanningMedia,
+                                    onRefresh = {
+                                        viewModel.refreshFeed()
+                                        coroutineScope.launch {
+                                            snackbarHostState.showSnackbar("Videos refreshed & mixed! 🔀")
+                                        }
+                                    },
+                                    onFilterSelected = { viewModel.selectFilter(it) },
+                                    onVideoClick = { viewModel.playVideo(it) },
+                                    onShortClick = { viewModel.openShortsAt(it) },
+                                    onEditTitleClick = { viewModel.openRenameDialog(it) },
+                                    onToggleWatchLater = {
+                                        viewModel.toggleWatchLater(it)
+                                        coroutineScope.launch {
+                                            val isWl = !(it.isWatchLater)
+                                            snackbarHostState.showSnackbar(if (isWl) "Saved to Watch Later" else "Removed from Watch Later")
+                                        }
+                                    },
+                                    onToggleSubscribe = {
+                                        viewModel.toggleSubscribe(it)
+                                        coroutineScope.launch {
+                                            val isSub = !(it.isSubscribed)
+                                            snackbarHostState.showSnackbar(if (isSub) "Subscribed to ${it.displayChannelName}" else "Unsubscribed")
+                                        }
+                                    },
+                                    onToggleDownload = {
+                                        viewModel.toggleDownloaded(it)
+                                        coroutineScope.launch {
+                                            val isDl = !(it.isDownloaded)
+                                            snackbarHostState.showSnackbar(if (isDl) "Saved to Downloads" else "Removed from Downloads")
+                                        }
+                                    },
+                                    onShareClick = { shareVideo(it) },
+                                    onScanStorageClick = {
+                                        mediaScannerViewModel.scanDeviceMedia()
+                                        viewModel.scanStorage()
+                                    },
+                                    shortsGridCount = shortsFeedGridCount,
+                                    listState = homeListState
+                                )
+
+                                1 -> ShortsScreen(
+                                    shortsList = if (shortsVideos.isNotEmpty()) shortsVideos else allVideos,
+                                    initialShortId = targetShortId,
+                                    onConsumedInitialShort = { viewModel.clearTargetShort() },
+                                    onToggleLike = { viewModel.toggleLike(it) },
+                                    onToggleDislike = { viewModel.toggleDislike(it) },
+                                    onToggleSubscribe = { viewModel.toggleSubscribe(it) },
+                                    onOpenComments = { viewModel.openComments(it) },
+                                    onToggleSave = {
+                                        viewModel.toggleWatchLater(it)
+                                        coroutineScope.launch {
+                                            val isWl = !(it.isWatchLater)
+                                            snackbarHostState.showSnackbar(if (isWl) "Saved to Watch Later" else "Removed from Watch Later")
+                                        }
+                                    },
+                                    onRemixClick = { viewModel.setShortsCameraOpen(true) },
+                                    onEditTitle = { viewModel.openRenameDialog(it) },
+                                    onShare = { shareVideo(it) },
+                                    onSearchClick = { viewModel.setSearchActive(true) },
+                                    onCameraClick = { viewModel.setShortsCameraOpen(true) },
+                                    onNotificationsClick = { viewModel.setNotificationsSheetOpen(true) },
+                                    unreadNotificationCount = unreadNotificationCount,
+                                    onToggleDownload = { viewModel.toggleDownloaded(it) },
+                                    onBackClick = { viewModel.selectTab(0) }
+                                )
+
+                                3 -> SubscriptionsScreen(
+                                    subscribedVideos = subscribedVideos,
+                                    onVideoClick = { viewModel.playVideo(it) },
+                                    onEditTitleClick = { viewModel.openRenameDialog(it) },
+                                    onToggleWatchLater = { viewModel.toggleWatchLater(it) },
+                                    onToggleSubscribe = { viewModel.toggleSubscribe(it) },
+                                    onToggleDownload = { viewModel.toggleDownloaded(it) },
+                                    onShareClick = { shareVideo(it) },
+                                    onExploreClick = { viewModel.selectTab(0) }
+                                )
+
+                                4 -> {
+                                    if (showDownloadsScreen) {
+                                        DownloadsScreen(
+                                            downloadedVideos = downloadedVideos,
+                                            onVideoClick = { viewModel.playVideo(it) },
+                                            onRemoveDownload = { viewModel.toggleDownloaded(it) },
+                                            onDeleteAllDownloads = { viewModel.deleteAllDownloads() },
+                                            onShareClick = { shareVideo(it) },
+                                            onBack = { viewModel.setDownloadsScreenOpen(false) },
+                                            onExploreVideos = {
+                                                viewModel.setDownloadsScreenOpen(false)
+                                                viewModel.selectTab(0)
+                                            },
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        LibraryScreen(
+                                            historyVideos = historyVideos,
+                                            watchLaterVideos = watchLaterVideos,
+                                            downloadedVideos = downloadedVideos,
+                                            likedVideos = likedVideos,
+                                            allVideos = allVideos,
+                                            userName = userName,
+                                            userHandle = userHandle,
+                                            userAvatarUri = userAvatarUri,
+                                            onEditProfileClick = { viewModel.setEditProfileDialogOpen(true) },
+                                            onVideoClick = { viewModel.playVideo(it) },
+                                            onSearchClick = {
+                                                viewModel.selectTab(0)
+                                                viewModel.setSearchActive(true)
+                                            },
+                                            onNotificationsClick = { viewModel.setNotificationsSheetOpen(true) },
+                                            onSettingsClick = { viewModel.setSettingsOpen(true) },
+                                            unreadNotificationCount = unreadNotificationCount,
+                                            onDownloadsClick = { viewModel.setDownloadsScreenOpen(true) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Top Bar Liquid Glass Overlay with dynamic scroll translation and alpha
+                    if (selectedTab != 1 && selectedTab != 4) {
+                        val barOffset = if (selectedTab == 0) animatedTopBarOffset else 0f
+                        val barAlpha = if (selectedTab == 0) topBarFraction else 1f
                         YouTubeTopBar(
                             isSearchActive = isSearchActive,
                             searchQuery = searchQuery,
@@ -670,165 +935,14 @@ fun MyTubeApp(
                                         }
                                     }
                                 )
-                            }
-                        )
-                    }
-                },
-                bottomBar = {
-                    YouTubeBottomBar(
-                        selectedTab = selectedTab,
-                        onTabSelected = { viewModel.selectTab(it) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .navigationBarsPadding()
-                            .padding(horizontal = 16.dp, vertical = 4.dp)
-                    )
-                }
-            ) { paddingValues ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = paddingValues.calculateTopPadding())
-                ) {
-                    val currentGlassConfig = LocalLiquidGlassConfig.current
-                    AnimatedContent(
-                        targetState = selectedTab,
-                        transitionSpec = {
-                            if (currentGlassConfig.springPhysicsEnabled) {
-                                val direction = if (targetState > initialState) 1 else -1
-                                (slideInHorizontally(
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                        stiffness = Spring.StiffnessMediumLow
-                                    ),
-                                    initialOffsetX = { fullWidth -> fullWidth * direction / 3 }
-                                ) + fadeIn(
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioNoBouncy,
-                                        stiffness = Spring.StiffnessMediumLow
-                                    )
-                                )).togetherWith(
-                                    slideOutHorizontally(
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioNoBouncy,
-                                            stiffness = Spring.StiffnessMediumLow
-                                        ),
-                                        targetOffsetX = { fullWidth -> -fullWidth * direction / 4 }
-                                    ) + fadeOut(
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioNoBouncy,
-                                            stiffness = Spring.StiffnessMediumLow
-                                        )
-                                    )
-                                )
-                            } else {
-                                fadeIn() togetherWith fadeOut()
-                            }
-                        },
-                        label = "tab_spring_transition"
-                    ) { tab ->
-                        when (tab) {
-                            0 -> HomeScreen(
-                                videos = filteredVideos,
-                                shortsList = shortsVideos,
-                                selectedFilter = selectedFilter,
-                                isRefreshing = isRefreshing,
-                                isScanningMedia = isScanningMedia,
-                                onRefresh = {
-                                    viewModel.refreshFeed()
-                                    coroutineScope.launch {
-                                        snackbarHostState.showSnackbar("Videos refreshed & mixed! 🔀")
-                                    }
-                                },
-                                onFilterSelected = { viewModel.selectFilter(it) },
-                                onVideoClick = { viewModel.playVideo(it) },
-                                onShortClick = { viewModel.openShortsAt(it) },
-                                onEditTitleClick = { viewModel.openRenameDialog(it) },
-                                onToggleWatchLater = {
-                                    viewModel.toggleWatchLater(it)
-                                    coroutineScope.launch {
-                                        val isWl = !(it.isWatchLater)
-                                        snackbarHostState.showSnackbar(if (isWl) "Saved to Watch Later" else "Removed from Watch Later")
-                                    }
-                                },
-                                onToggleSubscribe = {
-                                    viewModel.toggleSubscribe(it)
-                                    coroutineScope.launch {
-                                        val isSub = !(it.isSubscribed)
-                                        snackbarHostState.showSnackbar(if (isSub) "Subscribed to ${it.displayChannelName}" else "Unsubscribed")
-                                    }
-                                },
-                                onToggleDownload = {
-                                    viewModel.toggleDownloaded(it)
-                                    coroutineScope.launch {
-                                        val isDl = !(it.isDownloaded)
-                                        snackbarHostState.showSnackbar(if (isDl) "Saved to Downloads" else "Removed from Downloads")
-                                    }
-                                },
-                                onShareClick = { shareVideo(it) },
-                                onScanStorageClick = {
-                                    mediaScannerViewModel.scanDeviceMedia()
-                                    viewModel.scanStorage()
+                            },
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .graphicsLayer {
+                                    translationY = barOffset
+                                    alpha = barAlpha
                                 }
-                            )
-
-                            1 -> ShortsScreen(
-                                shortsList = if (shortsVideos.isNotEmpty()) shortsVideos else allVideos,
-                                initialShortId = targetShortId,
-                                onConsumedInitialShort = { viewModel.clearTargetShort() },
-                                onToggleLike = { viewModel.toggleLike(it) },
-                                onToggleDislike = { viewModel.toggleDislike(it) },
-                                onToggleSubscribe = { viewModel.toggleSubscribe(it) },
-                                onOpenComments = { viewModel.openComments(it) },
-                                onToggleSave = {
-                                    viewModel.toggleWatchLater(it)
-                                    coroutineScope.launch {
-                                        val isWl = !(it.isWatchLater)
-                                        snackbarHostState.showSnackbar(if (isWl) "Saved to Watch Later" else "Removed from Watch Later")
-                                    }
-                                },
-                                onRemixClick = { viewModel.setShortsCameraOpen(true) },
-                                onEditTitle = { viewModel.openRenameDialog(it) },
-                                onShare = { shareVideo(it) },
-                                onSearchClick = { viewModel.setSearchActive(true) },
-                                onCameraClick = { viewModel.setShortsCameraOpen(true) },
-                                onNotificationsClick = { viewModel.setNotificationsSheetOpen(true) },
-                                unreadNotificationCount = unreadNotificationCount,
-                                onToggleDownload = { viewModel.toggleDownloaded(it) },
-                                onBackClick = { viewModel.selectTab(0) }
-                            )
-
-                            3 -> SubscriptionsScreen(
-                                subscribedVideos = subscribedVideos,
-                                onVideoClick = { viewModel.playVideo(it) },
-                                onEditTitleClick = { viewModel.openRenameDialog(it) },
-                                onToggleWatchLater = { viewModel.toggleWatchLater(it) },
-                                onToggleSubscribe = { viewModel.toggleSubscribe(it) },
-                                onToggleDownload = { viewModel.toggleDownloaded(it) },
-                                onShareClick = { shareVideo(it) },
-                                onExploreClick = { viewModel.selectTab(0) }
-                            )
-
-                            4 -> LibraryScreen(
-                                historyVideos = historyVideos,
-                                watchLaterVideos = watchLaterVideos,
-                                downloadedVideos = downloadedVideos,
-                                likedVideos = likedVideos,
-                                allVideos = allVideos,
-                                userName = userName,
-                                userHandle = userHandle,
-                                userAvatarUri = userAvatarUri,
-                                onEditProfileClick = { viewModel.setEditProfileDialogOpen(true) },
-                                onVideoClick = { viewModel.playVideo(it) },
-                                onSearchClick = {
-                                    viewModel.selectTab(0)
-                                    viewModel.setSearchActive(true)
-                                },
-                                onNotificationsClick = { viewModel.setNotificationsSheetOpen(true) },
-                                onSettingsClick = { viewModel.setSettingsOpen(true) },
-                                unreadNotificationCount = unreadNotificationCount
-                            )
-                        }
+                        )
                     }
                 }
             }

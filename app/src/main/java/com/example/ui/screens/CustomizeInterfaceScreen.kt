@@ -206,6 +206,7 @@ fun CustomizeInterfaceScreen(
     val shortsActionButtonStyle by settingsManager.shortsActionButtonStyle.collectAsStateWithLifecycle()
     val shortsActionIconScale by settingsManager.shortsActionIconScale.collectAsStateWithLifecycle()
     val shortsOverlayAlpha by settingsManager.shortsOverlayAlpha.collectAsStateWithLifecycle()
+    val shortsFeedGridCount by settingsManager.shortsFeedGridCount.collectAsStateWithLifecycle()
 
     val navBarHeightDp by settingsManager.navBarHeightDp.collectAsStateWithLifecycle()
     val navBarGlassEnabled by settingsManager.navBarGlassEnabled.collectAsStateWithLifecycle()
@@ -1327,6 +1328,73 @@ fun CustomizeInterfaceScreen(
                     3 -> {
                         // Shorts Screen
                         item { SectionHeader("Shorts Screen Controls") }
+
+                        // Shorts Feed Grid (2, 4, 6, 8 options)
+                        item {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Shorts Feed Grid",
+                                        color = YtTextPrimary,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = "$shortsFeedGridCount Shorts / section",
+                                        color = accentColor,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Choose how many cards appear in each Shorts shelf section on the feed",
+                                    color = YtTextSecondary,
+                                    fontSize = 11.sp
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                val gridOptions = listOf(2, 4, 6, 8)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    gridOptions.forEach { count ->
+                                        val isSelected = shortsFeedGridCount == count
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(if (isSelected) accentColor else YtSurfaceDark)
+                                                .border(
+                                                    width = 1.dp,
+                                                    color = if (isSelected) Color.White else YtBorder,
+                                                    shape = RoundedCornerShape(10.dp)
+                                                )
+                                                .clickable { settingsManager.setShortsFeedGridCount(count) }
+                                                .padding(vertical = 10.dp)
+                                                .testTag("shorts_grid_option_$count"),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = "$count",
+                                                color = if (isSelected) Color.White else YtTextPrimary,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 14.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         item {
                             SliderControl(
                                 label = "Action Icons Scale",

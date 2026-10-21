@@ -85,6 +85,7 @@ fun LibraryScreen(
     onNotificationsClick: () -> Unit,
     onSettingsClick: () -> Unit,
     unreadNotificationCount: Int = 0,
+    onDownloadsClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val glassConfig = LocalLiquidGlassConfig.current
@@ -390,11 +391,7 @@ fun LibraryScreen(
                     title = "Downloads",
                     subtitle = "${downloadedVideos.size} videos • Available offline",
                     testTag = "library_downloads",
-                    onClick = {
-                        if (downloadedVideos.isNotEmpty()) {
-                            onVideoClick(downloadedVideos.first())
-                        }
-                    }
+                    onClick = onDownloadsClick
                 )
 
                 // 3. Liked videos

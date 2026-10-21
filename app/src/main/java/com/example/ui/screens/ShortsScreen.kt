@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.activity.compose.BackHandler
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
@@ -141,6 +142,10 @@ fun ShortsScreen(
     onBackClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    BackHandler {
+        onBackClick?.invoke()
+    }
+
     if (shortsList.isEmpty()) {
         Box(
             modifier = modifier

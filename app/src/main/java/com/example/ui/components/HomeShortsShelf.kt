@@ -55,6 +55,7 @@ import com.example.ui.theme.YtTextSecondary
 fun HomeShortsShelf(
     shortsList: List<VideoItem>,
     onShortClick: (VideoItem) -> Unit,
+    gridCount: Int = 4,
     modifier: Modifier = Modifier
 ) {
     if (shortsList.isEmpty()) return
@@ -120,8 +121,9 @@ fun HomeShortsShelf(
             )
         }
 
-        // 2-Column Grid Layout (Rendered in pairs of 2 cards for smooth LazyColumn integration)
-        val displayShorts = shortsList.take(6) // Take up to 6 shorts per shelf (3 rows of 2)
+        // Configurable Grid Layout (2, 4, 6, or 8 cards arranged in responsive pairs)
+        val countToDisplay = if (gridCount in listOf(2, 4, 6, 8)) gridCount else 4
+        val displayShorts = shortsList.take(countToDisplay)
         displayShorts.chunked(2).forEachIndexed { rowIndex, pair ->
             Row(
                 modifier = Modifier

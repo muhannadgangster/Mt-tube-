@@ -78,9 +78,11 @@ fun HomeScreen(
     onEditTitleClick: (VideoItem) -> Unit,
     onToggleWatchLater: (VideoItem) -> Unit,
     onToggleSubscribe: (VideoItem) -> Unit,
-    onToggleDownload: (VideoItem) -> Unit,
+    onToggleDownload: (VideoItem) -> Unit = {},
     onShareClick: (VideoItem) -> Unit,
     onScanStorageClick: () -> Unit,
+    shortsGridCount: Int = 4,
+    listState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
     modifier: Modifier = Modifier
 ) {
     val filterChips = listOf("All", "Videos", "Shorts", "Downloaded", "Favorites")
@@ -295,6 +297,7 @@ fun HomeScreen(
                 val regularVideos = if (videos.any { !it.isShort }) videos.filter { !it.isShort } else videos
 
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .fillMaxSize()
                         .testTag("home_videos_list"),
@@ -305,7 +308,8 @@ fun HomeScreen(
                         item(key = "shorts_only_grid") {
                             HomeShortsShelf(
                                 shortsList = effectiveShorts,
-                                onShortClick = onShortClick
+                                onShortClick = onShortClick,
+                                gridCount = shortsGridCount
                             )
                         }
                     } else if (selectedFilter == "Videos") {
@@ -325,20 +329,21 @@ fun HomeScreen(
                         }
                     } else {
                         // "All" / General feed (YouTube Layout requested by User):
-                        // 1. TOP OF HOMEPAGE: Immediately show top Shorts shelf (6 shorts: 2 top, 2 middle, 2 bottom)
+                        // 1. TOP OF HOMEPAGE: Immediately show top Shorts shelf with configured grid count
                         if (effectiveShorts.isNotEmpty()) {
                             item(key = "top_shorts_shelf_initial") {
-                                val top6Shorts = generateSequence { effectiveShorts }.flatten().take(6).toList()
+                                val topShorts = generateSequence { effectiveShorts }.flatten().take(shortsGridCount).toList()
                                 HomeShortsShelf(
-                                    shortsList = top6Shorts,
-                                    onShortClick = onShortClick
+                                    shortsList = topShorts,
+                                    onShortClick = onShortClick,
+                                    gridCount = shortsGridCount
                                 )
                             }
                         }
 
-                        // 2. INFINITE SCROLL: 2 Videos, then 2 Shorts, then 2 Shorts (yani 6 shorts top, then 2 videos, then shorts, etc.), looping seamlessly without end
+                        // 2. INFINITE SCROLL: 2 Videos, then Shorts grid section, looping seamlessly
                         val virtualCycles = 500
-                        val videoBlockSize = 2 // 2 videos per block as requested: "FIR do niche aur FIR do neeche... yani 6 shorts ho FIR uske niche Jo videos hoti hai FIR uske niche shorts"
+                        val videoBlockSize = 2
                         val videoCount = if (regularVideos.isNotEmpty()) regularVideos.size else 1
                         val totalVirtualBlocks = ((videoCount * virtualCycles) / videoBlockSize).coerceAtLeast(50)
 
@@ -364,17 +369,18 @@ fun HomeScreen(
                                 )
                             }
 
-                            // Followed by Shorts Shelf (2-column pairs)
+                            // Followed by Shorts Shelf (configurable 2, 4, 6, 8 grid)
                             if (effectiveShorts.isNotEmpty()) {
                                 item(key = "inf_shorts_shelf_after_block_$blockIndex") {
                                     val shelfShorts = generateSequence { effectiveShorts }
                                         .flatten()
-                                        .drop((blockIndex + 1) * 6)
-                                        .take(if (blockIndex % 2 == 0) 4 else 6)
+                                        .drop((blockIndex + 1) * shortsGridCount)
+                                        .take(shortsGridCount)
                                         .toList()
                                     HomeShortsShelf(
                                         shortsList = shelfShorts,
-                                        onShortClick = onShortClick
+                                        onShortClick = onShortClick,
+                                        gridCount = shortsGridCount
                                     )
                                 }
                             }
