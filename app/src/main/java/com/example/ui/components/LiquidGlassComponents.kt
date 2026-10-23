@@ -374,6 +374,7 @@ fun LiquidGlassSubscribeButton(
     modifier: Modifier = Modifier,
     tintHex: Long? = null,
     customShape: Shape? = null,
+    customArtwork: String? = null,
     testTag: String = "liquid_glass_subscribe_button"
 ) {
     val glassConfig = LocalLiquidGlassConfig.current
@@ -431,10 +432,32 @@ fun LiquidGlassSubscribeButton(
             .testTag(testTag),
         contentAlignment = Alignment.Center
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
+        if (!customArtwork.isNullOrBlank() && java.io.File(customArtwork).exists()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                coil.compose.AsyncImage(
+                    model = java.io.File(customArtwork),
+                    contentDescription = if (isSubscribed) "Subscribed" else "Subscribe",
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = if (isSubscribed) "Subscribed" else "Subscribe",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
             if (isSubscribed) {
                 Icon(
                     imageVector = Icons.Default.NotificationsActive,
@@ -464,6 +487,7 @@ fun LiquidGlassSubscribeButton(
             }
         }
     }
+}
 }
 
 /**

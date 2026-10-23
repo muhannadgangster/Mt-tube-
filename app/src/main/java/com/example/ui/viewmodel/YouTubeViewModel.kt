@@ -565,6 +565,13 @@ class YouTubeViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun toggleCommentLike(commentId: Long) {
+        viewModelScope.launch {
+            repository.toggleCommentLike(commentId)
+        }
+    }
+
+
     fun setPlusSheetOpen(open: Boolean) {
         _showPlusSheet.value = open
     }

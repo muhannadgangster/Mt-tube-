@@ -14,12 +14,17 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.offset
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import com.example.data.model.AppElementCatalog
+import java.io.File
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -156,6 +161,10 @@ fun ShortsScreen(
 
     val actionConfigs by settingsManager?.shortsActionConfigs?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(ShortsActionDefaults.DEFAULT_ACTIONS) }
+    val shortsDoubleTapMode by settingsManager?.shortsDoubleTapMode?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf("Heart") }
+    val customArtworks by settingsManager?.customButtonArtworks?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf(emptyMap()) }
 
     if (shortsList.isEmpty()) {
         Box(
@@ -228,7 +237,9 @@ fun ShortsScreen(
                 onRemixClick = { onRemixClick(video) },
                 onEditTitle = { onEditTitle(video) },
                 onShare = { onShare(video) },
-                onOpenMenu = { activeSheetVideo = video }
+                onOpenMenu = { activeSheetVideo = video },
+                shortsDoubleTapMode = shortsDoubleTapMode,
+                customArtworks = customArtworks
             )
         }
 
@@ -308,7 +319,9 @@ private fun ShortsItemPage(
     onRemixClick: () -> Unit,
     onEditTitle: () -> Unit,
     onShare: () -> Unit,
-    onOpenMenu: () -> Unit = {}
+    onOpenMenu: () -> Unit = {},
+    shortsDoubleTapMode: String = "Heart",
+    customArtworks: Map<String, String> = emptyMap()
 ) {
     val coroutineScope = rememberCoroutineScope()
     var isPlaying by remember { mutableStateOf(true) }
@@ -317,9 +330,12 @@ private fun ShortsItemPage(
     var mediaPlayerRef by remember { mutableStateOf<MediaPlayer?>(null) }
     var isSpeedBoosting by remember { mutableStateOf(false) }
 
-    // Heart Double-Tap Animation state & coordinates
+    // Smooth Native Double-Tap Like Animation state & animatables
     var heartAnimOffset by remember { mutableStateOf<Offset?>(null) }
     var showHeartAnim by remember { mutableStateOf(false) }
+    val animScale = remember { Animatable(0.2f) }
+    val animAlpha = remember { Animatable(1f) }
+    val animFloatY = remember { Animatable(0f) }
 
     // Spinning disc animation for sound card
     val infiniteTransition = rememberInfiniteTransition(label = "disc_rotation")
@@ -497,37 +513,90 @@ private fun ShortsItemPage(
             }
         }
 
-        // Heart Double-Tap Burst Animation at exact screen tap position
+        // Smooth Native Shorts Like Animation (Scale, Fade, Upward Float, Heart/Thumb Mode & Custom Artwork)
         LaunchedEffect(showHeartAnim) {
             if (showHeartAnim) {
-                delay(950)
-                showHeartAnim = false
+                animScale.snapTo(0.2f)
+                animAlpha.snapTo(1f)
+                animFloatY.snapTo(0f)
+
+                coroutineScope.launch {
+                    animScale.animateTo(1.25f, tween(260, easing = FastOutSlowInEasing))
+                    animScale.animateTo(1.05f, tween(140, easing = LinearOutSlowInEasing))
+                }
+                coroutineScope.launch {
+                    animFloatY.animateTo(-70f, tween(850, easing = FastOutSlowInEasing))
+                }
+                coroutineScope.launch {
+                    delay(500)
+                    animAlpha.animateTo(0f, tween(350, easing = LinearEasing))
+                    showHeartAnim = false
+                }
             }
         }
 
         if (showHeartAnim && heartAnimOffset != null) {
             val density = LocalDensity.current
-            val offsetXdp = with(density) { heartAnimOffset!!.x.toDp() } - 50.dp
-            val offsetYdp = with(density) { heartAnimOffset!!.y.toDp() } - 50.dp
-            val accentColor = LocalAppAccentColor.current
+            val offsetXdp = with(density) { heartAnimOffset!!.x.toDp() } - 48.dp
+            val offsetYdp = with(density) { heartAnimOffset!!.y.toDp() } - 48.dp + animFloatY.value.dp
+            val isThumbMode = shortsDoubleTapMode.equals("Thumb", ignoreCase = true)
+            val customArt = if (isThumbMode) {
+                customArtworks[AppElementCatalog.ART_THUMB] ?: customArtworks["thumb"]
+            } else {
+                customArtworks[AppElementCatalog.ART_HEART] ?: customArtworks["heart"]
+            }
 
-            AnimatedVisibility(
-                visible = showHeartAnim,
-                enter = fadeIn(tween(120)) + scaleIn(tween(250), initialScale = 0.2f),
-                exit = fadeOut(tween(350)) + scaleOut(tween(350), targetScale = 1.6f),
-                modifier = Modifier.padding(start = offsetXdp.coerceAtLeast(0.dp), top = offsetYdp.coerceAtLeast(0.dp))
+            Box(
+                modifier = Modifier
+                    .padding(start = offsetXdp.coerceAtLeast(0.dp), top = offsetYdp.coerceAtLeast(0.dp))
+                    .graphicsLayer {
+                        scaleX = animScale.value
+                        scaleY = animScale.value
+                        alpha = animAlpha.value
+                    }
+                    .size(96.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(100.dp)
-                        .clip(CircleShape)
-                        .background(accentColor.copy(alpha = 0.25f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "❤️",
-                        fontSize = 58.sp
+                if (!customArt.isNullOrBlank() && File(customArt).exists()) {
+                    AsyncImage(
+                        model = File(customArt),
+                        contentDescription = "Custom Like Animation",
+                        modifier = Modifier
+                            .size(68.dp)
+                            .clip(CircleShape)
+                            .border(2.dp, Color.White, CircleShape),
+                        contentScale = ContentScale.Crop
                     )
+                } else if (isThumbMode) {
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF1976D2).copy(alpha = 0.35f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.ThumbUp,
+                            contentDescription = "Thumb Up",
+                            tint = Color(0xFF2979FF),
+                            modifier = Modifier.size(54.dp)
+                        )
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFFF1744).copy(alpha = 0.35f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Favorite,
+                            contentDescription = "Heart",
+                            tint = Color(0xFFFF1744),
+                            modifier = Modifier.size(58.dp)
+                        )
+                    }
                 }
             }
         }
@@ -726,6 +795,7 @@ private fun ShortsItemPage(
                             label = video.formattedLikesCount,
                             tint = if (video.isLiked) appAccentColor else Color.White,
                             testTag = "shorts_like_button",
+                            customArtwork = customArtworks[action.id],
                             onClick = onToggleLike
                         )
                     }
@@ -735,6 +805,7 @@ private fun ShortsItemPage(
                             label = "Dislike",
                             tint = Color.White,
                             testTag = "shorts_dislike_button",
+                            customArtwork = customArtworks[action.id],
                             onClick = onToggleDislike
                         )
                     }
@@ -744,6 +815,7 @@ private fun ShortsItemPage(
                             label = video.formattedCommentsCount,
                             tint = Color.White,
                             testTag = "shorts_comment_button",
+                            customArtwork = customArtworks[action.id],
                             onClick = onOpenComments
                         )
                     }
@@ -753,6 +825,7 @@ private fun ShortsItemPage(
                             label = "Share",
                             tint = Color.White,
                             testTag = "shorts_share_button",
+                            customArtwork = customArtworks[action.id],
                             onClick = onShare
                         )
                     }
@@ -762,6 +835,7 @@ private fun ShortsItemPage(
                             label = "Remix",
                             tint = Color.White,
                             testTag = "shorts_remix_button",
+                            customArtwork = customArtworks[action.id],
                             onClick = onRemixClick
                         )
                     }
@@ -771,6 +845,7 @@ private fun ShortsItemPage(
                             label = "More",
                             tint = Color.White,
                             testTag = "shorts_more_button",
+                            customArtwork = customArtworks[action.id],
                             onClick = onOpenMenu
                         )
                     }
@@ -778,6 +853,7 @@ private fun ShortsItemPage(
                         LiquidGlassSubscribeButton(
                             isSubscribed = video.isSubscribed,
                             onToggleSubscribe = onToggleSubscribe,
+                            customArtwork = customArtworks[action.id],
                             testTag = "shorts_custom_subscribe_button"
                         )
                     }
@@ -929,6 +1005,7 @@ private fun ShortsActionButton(
     label: String,
     tint: Color,
     testTag: String,
+    customArtwork: String? = null,
     onClick: () -> Unit
 ) {
     val glassConfig = com.example.ui.theme.LocalLiquidGlassConfig.current
@@ -975,12 +1052,23 @@ private fun ShortsActionButton(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = tint,
-                modifier = Modifier.size((24 * scale).dp.scaled())
-            )
+            if (!customArtwork.isNullOrBlank() && File(customArtwork).exists()) {
+                AsyncImage(
+                    model = File(customArtwork),
+                    contentDescription = label,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(buttonShape),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = tint,
+                    modifier = Modifier.size((24 * scale).dp.scaled())
+                )
+            }
         }
         Spacer(modifier = Modifier.height(2.dp.scaled()))
         Text(

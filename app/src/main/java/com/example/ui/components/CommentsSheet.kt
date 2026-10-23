@@ -17,11 +17,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -47,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.VideoItem
 import com.example.data.local.CommentEntity
+import com.example.ui.theme.LocalAppAccentColor
 import com.example.ui.theme.YtAvatarPurple
 import com.example.ui.theme.YtBorder
 import com.example.ui.theme.YtRed
@@ -66,8 +70,10 @@ fun CommentsSheet(
     video: VideoItem,
     comments: List<CommentEntity> = emptyList(),
     onDismiss: () -> Unit,
-    onPostComment: (String) -> Unit
+    onPostComment: (String) -> Unit,
+    onToggleLikeComment: (Long) -> Unit = {}
 ) {
+
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var input by remember { mutableStateOf("") }
     val totalCount = comments.size + if (video.userNotes.isNotBlank()) 1 else 0
@@ -152,8 +158,8 @@ fun CommentsSheet(
                     }
                 }
 
-                // Real-time Database Comments
-                items(comments, key = { it.commentId }) { comment ->
+                // Real-time Database Comments (Offline Suggestions + User Comments)
+                itemsIndexed(comments, key = { _, it -> it.commentId }) { index, comment ->
                     CommentRow(
                         authorName = comment.authorName,
                         authorHandle = comment.authorHandle,
@@ -161,7 +167,10 @@ fun CommentsSheet(
                         avatarColor = if (comment.authorAvatarLetter == "M") YtAvatarPurple else Color(0xFF1E88E5),
                         timeAgo = comment.formattedTime,
                         commentText = comment.text,
-                        likes = comment.likesCount
+                        likes = comment.likesCount,
+                        isLiked = comment.isLiked,
+                        isHighlighted = (index == 0),
+                        onLikeClick = { onToggleLikeComment(comment.commentId) }
                     )
                 }
 
@@ -283,8 +292,12 @@ private fun CommentRow(
     avatarColor: Color,
     timeAgo: String,
     commentText: String,
-    likes: Int
+    likes: Int,
+    isLiked: Boolean = false,
+    isHighlighted: Boolean = false,
+    onLikeClick: () -> Unit = {}
 ) {
+    val accentColor = LocalAppAccentColor.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top
@@ -307,6 +320,27 @@ private fun CommentRow(
         Spacer(modifier = Modifier.width(10.dp))
 
         Column(modifier = Modifier.weight(1f)) {
+            if (isHighlighted) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 2.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PushPin,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(11.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Pinned / Top Comment",
+                        color = accentColor,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = authorHandle,
@@ -333,22 +367,30 @@ private fun CommentRow(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { onLikeClick() }
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
+            ) {
                 Icon(
-                    imageVector = Icons.Outlined.ThumbUp,
+                    imageVector = if (isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
                     contentDescription = "Like comment",
-                    tint = YtTextSecondary,
-                    modifier = Modifier.size(13.dp)
+                    tint = if (isLiked) accentColor else YtTextSecondary,
+                    modifier = Modifier.size(14.dp)
                 )
                 if (likes > 0) {
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "$likes",
-                        color = YtTextSecondary,
-                        fontSize = 10.sp
+                        color = if (isLiked) accentColor else YtTextSecondary,
+                        fontSize = 11.sp,
+                        fontWeight = if (isLiked) FontWeight.Bold else FontWeight.Normal
                     )
                 }
             }
         }
     }
 }
+

@@ -23,6 +23,10 @@ interface CommentDao {
     @Query("UPDATE video_comments SET likesCount = likesCount + 1, isLiked = 1 WHERE commentId = :commentId")
     suspend fun likeComment(commentId: Long)
 
+    @Query("UPDATE video_comments SET likesCount = CASE WHEN isLiked = 1 THEN MAX(0, likesCount - 1) ELSE likesCount + 1 END, isLiked = CASE WHEN isLiked = 1 THEN 0 ELSE 1 END WHERE commentId = :commentId")
+    suspend fun toggleCommentLike(commentId: Long)
+
+
     @Query("DELETE FROM video_comments WHERE commentId = :commentId")
     suspend fun deleteComment(commentId: Long)
 

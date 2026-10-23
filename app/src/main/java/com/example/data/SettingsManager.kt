@@ -2,6 +2,8 @@ package com.example.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.data.model.AppElementCatalog
+import com.example.data.model.AppElementConfig
 import com.example.data.model.ShortsActionConfig
 import com.example.data.model.ShortsActionDefaults
 import kotlinx.coroutines.CoroutineScope
@@ -1063,6 +1065,129 @@ class SettingsManager(context: Context) {
 
     fun resetShortsActionConfigs() {
         saveShortsActionConfigs(ShortsActionDefaults.getDefaultActions())
+    }
+
+    // Shorts Double-Tap Like Animation Mode: "Heart" vs "Thumb"
+    private val _shortsDoubleTapMode = MutableStateFlow(prefs.getString("shorts_double_tap_mode", "Heart") ?: "Heart")
+    val shortsDoubleTapMode: StateFlow<String> = _shortsDoubleTapMode.asStateFlow()
+
+    fun setShortsDoubleTapMode(mode: String) {
+        val safeMode = if (mode.equals("Thumb", ignoreCase = true)) "Thumb" else "Heart"
+        _shortsDoubleTapMode.value = safeMode
+        prefs.edit().putString("shorts_double_tap_mode", safeMode).apply()
+    }
+
+    // Custom Button Artworks mapping: elementId -> local saved image path or URI
+    private fun loadCustomArtworks(): Map<String, String> {
+        val saved = prefs.getStringSet("custom_button_artworks_v1", null) ?: return emptyMap()
+        val map = mutableMapOf<String, String>()
+        for (entry in saved) {
+            val idx = entry.indexOf("=")
+            if (idx > 0 && idx < entry.length - 1) {
+                map[entry.substring(0, idx)] = entry.substring(idx + 1)
+            }
+        }
+        return map
+    }
+
+    private val _customButtonArtworks = MutableStateFlow<Map<String, String>>(loadCustomArtworks())
+    val customButtonArtworks: StateFlow<Map<String, String>> = _customButtonArtworks.asStateFlow()
+
+    fun setCustomButtonArtwork(elementId: String, pathOrUri: String?) {
+        val updated = _customButtonArtworks.value.toMutableMap()
+        if (pathOrUri.isNullOrBlank()) {
+            updated.remove(elementId)
+        } else {
+            updated[elementId] = pathOrUri
+        }
+        _customButtonArtworks.value = updated
+        val set = updated.map { "${it.key}=${it.value}" }.toSet()
+        prefs.edit().putStringSet("custom_button_artworks_v1", set).apply()
+
+        // Also reflect in AppElementConfigs
+        val current = _appElementConfigs.value.toMutableList()
+        val idx = current.indexOfFirst { it.id == elementId }
+        if (idx != -1) {
+            val old = current[idx]
+            current[idx] = old.copy(customArtworkPath = pathOrUri)
+            saveAppElementConfigs(current)
+        }
+    }
+
+    fun removeCustomButtonArtwork(elementId: String) {
+        setCustomButtonArtwork(elementId, null)
+    }
+
+    // Universal App Element Customization (Home, Shorts, Player, Profile, Subscriptions, Search, Notifications, Navigation)
+    private fun loadAppElements(): List<AppElementConfig> {
+        val savedSet = prefs.getStringSet("app_element_configs_v1", null)
+        val defaults = AppElementCatalog.getAllDefaultElements()
+        if (savedSet.isNullOrEmpty()) {
+            return defaults
+        }
+        val loaded = savedSet.mapNotNull { AppElementConfig.fromSerialized(it) }
+        val loadedMap = loaded.associateBy { it.id }
+        return defaults.map { def ->
+            loadedMap[def.id]?.let { saved ->
+                def.copy(
+                    isVisible = saved.isVisible,
+                    xRatio = saved.xRatio,
+                    yRatio = saved.yRatio,
+                    scale = saved.scale,
+                    customArtworkPath = saved.customArtworkPath
+                )
+            } ?: def
+        }
+    }
+
+    private val _appElementConfigs = MutableStateFlow<List<AppElementConfig>>(loadAppElements())
+    val appElementConfigs: StateFlow<List<AppElementConfig>> = _appElementConfigs.asStateFlow()
+
+    fun saveAppElementConfigs(configs: List<AppElementConfig>) {
+        _appElementConfigs.value = configs
+        val set = configs.map { it.toSerialized() }.toSet()
+        prefs.edit().putStringSet("app_element_configs_v1", set).apply()
+    }
+
+    fun updateAppElementPosition(id: String, xRatio: Float, yRatio: Float) {
+        val current = _appElementConfigs.value.toMutableList()
+        val idx = current.indexOfFirst { it.id == id }
+        if (idx != -1) {
+            val old = current[idx]
+            current[idx] = old.copy(
+                xRatio = xRatio.coerceIn(0.02f, 0.98f),
+                yRatio = yRatio.coerceIn(0.02f, 0.98f)
+            )
+            saveAppElementConfigs(current)
+        }
+    }
+
+    fun setAppElementVisible(id: String, isVisible: Boolean) {
+        val current = _appElementConfigs.value.toMutableList()
+        val idx = current.indexOfFirst { it.id == id }
+        if (idx != -1) {
+            val old = current[idx]
+            if (!isVisible && old.isProtected) return
+            current[idx] = old.copy(isVisible = isVisible)
+            saveAppElementConfigs(current)
+        }
+    }
+
+    fun setAppElementScale(id: String, scale: Float) {
+        val current = _appElementConfigs.value.toMutableList()
+        val idx = current.indexOfFirst { it.id == id }
+        if (idx != -1) {
+            val old = current[idx]
+            current[idx] = old.copy(scale = scale.coerceIn(0.5f, 2.5f))
+            saveAppElementConfigs(current)
+        }
+    }
+
+    fun resetAppElementConfigs() {
+        val defaults = AppElementCatalog.getAllDefaultElements()
+        saveAppElementConfigs(defaults)
+        _customButtonArtworks.value = emptyMap()
+        prefs.edit().remove("custom_button_artworks_v1").apply()
     }
 
     // Search Screen Background & Liquid Glass Customization

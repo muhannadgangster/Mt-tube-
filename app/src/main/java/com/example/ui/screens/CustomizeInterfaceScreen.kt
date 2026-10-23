@@ -208,6 +208,7 @@ fun CustomizeInterfaceScreen(
     val shortsOverlayAlpha by settingsManager.shortsOverlayAlpha.collectAsStateWithLifecycle()
     val shortsFeedGridCount by settingsManager.shortsFeedGridCount.collectAsStateWithLifecycle()
     var showDemoShortsEditor by remember { mutableStateOf(false) }
+    var showDemoAndCustomization by remember { mutableStateOf(false) }
 
     val searchBgType by settingsManager.searchBackgroundType.collectAsStateWithLifecycle()
     val searchBgColorHex by settingsManager.searchBackgroundCustomColorHex.collectAsStateWithLifecycle()
@@ -292,6 +293,18 @@ fun CustomizeInterfaceScreen(
         CustomPageRendererScreen(
             page = previewingPage!!,
             onBack = { previewingPage = null },
+            modifier = modifier
+        )
+        return
+    }
+
+    if (showDemoAndCustomization) {
+        BackHandler {
+            showDemoAndCustomization = false
+        }
+        DemoAndCustomizationScreen(
+            settingsManager = settingsManager,
+            onBack = { showDemoAndCustomization = false },
             modifier = modifier
         )
         return
@@ -473,6 +486,77 @@ fun CustomizeInterfaceScreen(
                         uncheckedTrackColor = YtSurfaceVariant
                     ),
                     modifier = Modifier.testTag("switch_liquid_glass_mode")
+                )
+            }
+        }
+
+        // Settings -> Customize Interface -> Demo & Customization (Complete App Customization & Gallery Button Editor)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 4.dp)
+                .clickable { showDemoAndCustomization = true }
+                .testTag("open_demo_and_customization_card"),
+            colors = CardDefaults.cardColors(containerColor = if (isGlassTheme) Color.Transparent else YtSurfaceDark),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, if (isGlassTheme) YtGlassDarkBorder else accentColor.copy(alpha = 0.5f))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(accentColor.copy(alpha = 0.22f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Widgets,
+                        contentDescription = "Demo & Customization",
+                        tint = accentColor,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Demo & Customization",
+                            color = YtTextPrimary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(accentColor.copy(alpha = 0.2f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "COMPLETE",
+                                color = accentColor,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    Text(
+                        text = "Interactive preview of all 8 screens • 3s drag & drop • Gallery button editor • Icon catalog",
+                        color = YtTextSecondary,
+                        fontSize = 11.sp,
+                        maxLines = 2
+                    )
+                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = YtTextSecondary,
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }

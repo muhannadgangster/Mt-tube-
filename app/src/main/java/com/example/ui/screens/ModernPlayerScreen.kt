@@ -90,8 +90,10 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import com.example.data.SettingsManager
+import com.example.util.LocalCommentGenerator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -101,6 +103,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -2211,23 +2214,36 @@ fun ModernPlayerScreen(
                     }
                 }
 
-                // 3. OFFLINE COMMENTS CARD (Local Storage / Offline Comments)
+                // 3. OFFLINE COMMENTS COMPACT PREVIEW (Compact 2-comment preview with top pinned comment)
                 item {
+                    val genComments = remember(video.id) {
+                        LocalCommentGenerator.generateLocalComments(
+                            videoId = video.id,
+                            title = video.displayTitle,
+                            channelName = video.channelName,
+                            durationMs = video.durationMs,
+                            isShort = video.isShort,
+                            hashtags = video.hashtags
+                        )
+                    }
+                    val topComment = genComments.firstOrNull()
+                    val secondComment = genComments.getOrNull(1)
+                    val totalCommentsCount = genComments.size + localCommentsList.size
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 8.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                            .clip(RoundedCornerShape(14.dp))
                             .background(YtSurfaceVariant)
+                            .clickable { onOpenComments() }
                             .padding(12.dp)
                             .testTag("player_comments_card")
                     ) {
                         Column {
                             // Total Comments Count & Header
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onOpenComments() },
+                                modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
@@ -2238,118 +2254,141 @@ fun ModernPlayerScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "${localCommentsList.size + 142}",
+                                    text = "$totalCommentsCount",
                                     color = YtTextSecondary,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Spacer(modifier = Modifier.weight(1f))
                                 Text(
-                                    text = "View all",
-                                    color = YtTextSecondary,
-                                    fontSize = 11.sp
+                                    text = "View all $totalCommentsCount",
+                                    color = YtRed,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
 
                             Spacer(modifier = Modifier.height(10.dp))
 
-                            // Local Storage Input Field ("Add a comment...")
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(28.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF1E88E5)),
-                                    contentAlignment = Alignment.Center
+                            // Highlighted / Pinned Top Comment
+                            if (topComment != null) {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = Color(0x18FFFFFF),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x22FFFFFF))
                                 ) {
-                                    Text("U", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                OutlinedTextField(
-                                    value = commentInputText,
-                                    onValueChange = { commentInputText = it },
-                                    placeholder = {
-                                        Text("Add a comment...", fontSize = 12.sp, color = YtTextSecondary)
-                                    },
-                                    singleLine = true,
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = YtRed,
-                                        unfocusedBorderColor = Color(0x33FFFFFF),
-                                        focusedTextColor = YtTextPrimary,
-                                        unfocusedTextColor = YtTextPrimary,
-                                        cursorColor = YtRed
-                                    ),
-                                    shape = RoundedCornerShape(18.dp),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(46.dp)
-                                        .testTag("player_comment_input")
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                IconButton(
-                                    onClick = {
-                                        if (commentInputText.isNotBlank()) {
-                                            val newComment = commentInputText.trim()
-                                            val updated = (listOf(newComment) + localCommentsList).distinct()
-                                            localCommentsList = updated
-                                            val currentSaved = sharedPrefs.getStringSet("comments_${video.id}", null) ?: emptySet()
-                                            sharedPrefs.edit()
-                                                .putStringSet("comments_${video.id}", currentSaved + newComment)
-                                                .apply()
-                                            commentInputText = ""
-                                        }
-                                    },
-                                    enabled = commentInputText.isNotBlank(),
-                                    modifier = Modifier.size(36.dp).testTag("player_comment_send_button")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.Send,
-                                        contentDescription = "Post Comment",
-                                        tint = if (commentInputText.isNotBlank()) YtRed else Color(0x44FFFFFF),
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            // Dynamic list showing locally saved comments under active video
-                            Column(
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                localCommentsList.take(3).forEachIndexed { idx, commentItem ->
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.Top
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(24.dp)
-                                                .clip(CircleShape)
-                                                .background(if (idx % 2 == 0) Color(0xFF2E7D32) else Color(0xFFE65100)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
+                                    Column(modifier = Modifier.padding(8.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Default.PushPin,
+                                                contentDescription = "Pinned",
+                                                tint = Color(0xFFFF5252),
+                                                modifier = Modifier.size(11.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
                                             Text(
-                                                text = if (idx % 2 == 0) "B" else "A",
-                                                color = Color.White,
-                                                fontSize = 11.sp,
+                                                text = "Pinned / Top Comment",
+                                                color = Color(0xFFFF5252),
+                                                fontSize = 10.sp,
                                                 fontWeight = FontWeight.Bold
                                             )
                                         }
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Column(modifier = Modifier.weight(1f)) {
+
+                                        Spacer(modifier = Modifier.height(4.dp))
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.Top
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(22.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color(0xFF2E7D32)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = topComment.authorName.take(1),
+                                                    color = Color.White,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Text(
+                                                        text = topComment.authorName,
+                                                        color = YtTextSecondary,
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.SemiBold
+                                                    )
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Text(
+                                                        text = topComment.formattedTime,
+                                                        color = Color.Gray,
+                                                        fontSize = 10.sp
+                                                    )
+                                                }
+                                                Text(
+                                                    text = topComment.text,
+                                                    color = YtTextPrimary,
+                                                    fontSize = 12.sp,
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    lineHeight = 15.sp
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Second compact comment preview
+                            if (secondComment != null) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(20.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFFE65100)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = secondComment.authorName.take(1),
+                                            color = Color.White,
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
-                                                text = commentItem,
-                                                color = YtTextPrimary,
-                                                fontSize = 12.sp,
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis,
-                                                lineHeight = 15.sp
+                                                text = secondComment.authorName,
+                                                color = YtTextSecondary,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = secondComment.formattedTime,
+                                                color = Color.Gray,
+                                                fontSize = 9.sp
                                             )
                                         }
+                                        Text(
+                                            text = secondComment.text,
+                                            color = YtTextPrimary,
+                                            fontSize = 11.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
                                     }
                                 }
                             }

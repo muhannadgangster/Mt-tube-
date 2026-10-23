@@ -372,7 +372,8 @@ class VideoRepository(private val context: Context) {
                             title = metadata.customTitle ?: metadata.originalTitle,
                             channelName = metadata.customChannelName ?: metadata.channelName,
                             durationMs = metadata.durationMs,
-                            isShort = isShort
+                            isShort = isShort,
+                            hashtags = metadata.hashtags
                         )
                         generated.forEach { comment ->
                             db.commentDao().insertComment(comment)
@@ -383,6 +384,11 @@ class VideoRepository(private val context: Context) {
         }
         return db.commentDao().getCommentsForVideo(videoId).flowOn(Dispatchers.IO)
     }
+
+    suspend fun toggleCommentLike(commentId: Long) = withContext(Dispatchers.IO) {
+        db.commentDao().toggleCommentLike(commentId)
+    }
+
 
     suspend fun deleteVideo(id: String) = withContext(Dispatchers.IO) {
         dao.deleteById(id)

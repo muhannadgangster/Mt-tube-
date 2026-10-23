@@ -1031,6 +1031,9 @@ fun MyTubeApp(
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar("Comment posted")
                     }
+                },
+                onToggleLikeComment = { commentId ->
+                    viewModel.toggleCommentLike(commentId)
                 }
             )
         }
