@@ -30,12 +30,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import com.example.data.SettingsManager
+import com.example.ui.theme.LocalLiquidGlassConfig
+import com.example.ui.theme.liquidGlassSurface
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -77,6 +84,7 @@ fun SubscriptionsScreen(
     onToggleDownload: (VideoItem) -> Unit,
     onShareClick: (VideoItem) -> Unit,
     onExploreClick: () -> Unit,
+    settingsManager: SettingsManager? = null,
     modifier: Modifier = Modifier
 ) {
     val channels = subscribedVideos.map { it.displayChannelName }.distinct()
@@ -84,10 +92,42 @@ fun SubscriptionsScreen(
     var selectedFilter by remember { mutableStateOf("All") }
     val filterChips = listOf("All", "Today", "Videos", "Shorts", "Live")
 
+    val subBgType by settingsManager?.subscriptionsBackgroundType?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf("Default Dark") }
+    val subBgColorHex by settingsManager?.subscriptionsBackgroundCustomColorHex?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf(0xFF181024L) }
+    val subGlassTrans by settingsManager?.subscriptionsGlassTransparency?.collectAsStateWithLifecycle()
+        ?: remember { mutableFloatStateOf(0.65f) }
+    val subGlassRefract by settingsManager?.subscriptionsGlassRefraction?.collectAsStateWithLifecycle()
+        ?: remember { mutableFloatStateOf(0.40f) }
+    val subGlassHigh by settingsManager?.subscriptionsGlassHighlights?.collectAsStateWithLifecycle()
+        ?: remember { mutableFloatStateOf(0.55f) }
+
+    val subBrush = remember(subBgType, subBgColorHex) {
+        when (subBgType) {
+            "Cosmic Purple" -> Brush.verticalGradient(listOf(Color(0xFF1E0E2B), Color(0xFF14071E), Color(0xFF09040E)))
+            "Teal Abyss", "Midnight Teal" -> Brush.verticalGradient(listOf(Color(0xFF072127), Color(0xFF041418), Color(0xFF02090B)))
+            "Frosted Amber" -> Brush.verticalGradient(listOf(Color(0xFF28180A), Color(0xFF180E05), Color(0xFF0C0702)))
+            "Custom Color" -> Brush.verticalGradient(listOf(Color(subBgColorHex), Color(0xFF0A0A0A)))
+            "App Wallpaper" -> Brush.verticalGradient(listOf(Color(0xFF16192E), Color(0xFF0E0F1D)))
+            else -> SolidColor(YtDarkBackground)
+        }
+    }
+
+    val baseGlassConfig = LocalLiquidGlassConfig.current
+    val effectiveSubGlassConfig = remember(baseGlassConfig, subGlassTrans, subGlassRefract, subGlassHigh) {
+        baseGlassConfig.copy(
+            transparency = subGlassTrans,
+            refractionAmount = subGlassRefract,
+            edgeHighlights = subGlassHigh
+        )
+    }
+
+
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(YtDarkBackground)
+            .background(subBrush)
     ) {
         if (channels.isNotEmpty()) {
             // Horizontal row of subscribed channels (circles with names & blue dot)

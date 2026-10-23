@@ -2413,3 +2413,108 @@ private fun PreviewShortsButton(
         Text(label, color = Color.White, fontSize = 10.sp)
     }
 }
+
+@Composable
+private fun OptionSelectorRow(
+    label: String,
+    options: List<String>,
+    selected: String,
+    accentColor: Color,
+    onSelect: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+    ) {
+        Text(label, color = YtTextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            options.forEach { opt ->
+                val isSelected = opt == selected
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable { onSelect(opt) }
+                        .background(if (isSelected) accentColor else YtSurfaceVariant)
+                        .border(1.dp, if (isSelected) accentColor else YtBorder, RoundedCornerShape(16.dp))
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = opt,
+                        color = if (isSelected) Color.White else YtTextPrimary,
+                        fontSize = 12.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColorPickerRow(
+    label: String,
+    colors: List<Pair<String, Long>>,
+    selectedHex: Long,
+    onColorSelected: (Long) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+    ) {
+        Text(label, color = YtTextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            colors.forEach { (colorName, hexVal) ->
+                val isSelected = hexVal == selectedHex
+                val color = Color(hexVal)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.clickable { onColorSelected(hexVal) }
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(color)
+                            .border(
+                                width = if (isSelected) 2.5.dp else 1.dp,
+                                color = if (isSelected) Color.White else YtBorder,
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSelected) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = colorName,
+                        color = if (isSelected) Color.White else YtTextSecondary,
+                        fontSize = 10.sp
+                    )
+                }
+            }
+        }
+    }
+}
+

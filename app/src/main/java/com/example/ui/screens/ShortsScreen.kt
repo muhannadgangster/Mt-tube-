@@ -5,6 +5,13 @@ import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
 import android.widget.VideoView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.SettingsManager
+import com.example.data.model.ShortsActionConfig
+import com.example.data.model.ShortsActionIds
+import com.example.data.model.ShortsActionDefaults
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
@@ -140,11 +147,15 @@ fun ShortsScreen(
     unreadNotificationCount: Int = 0,
     onToggleDownload: ((VideoItem) -> Unit)? = null,
     onBackClick: (() -> Unit)? = null,
+    settingsManager: SettingsManager? = null,
     modifier: Modifier = Modifier
 ) {
     BackHandler {
         onBackClick?.invoke()
     }
+
+    val actionConfigs by settingsManager?.shortsActionConfigs?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf(ShortsActionDefaults.DEFAULT_ACTIONS) }
 
     if (shortsList.isEmpty()) {
         Box(
@@ -208,6 +219,7 @@ fun ShortsScreen(
                 video = video,
                 pageIndex = page,
                 isActive = isCurrentPage,
+                actionConfigs = actionConfigs,
                 onToggleLike = { onToggleLike(video) },
                 onToggleDislike = { onToggleDislike(video) },
                 onToggleSubscribe = { onToggleSubscribe(video) },
@@ -287,6 +299,7 @@ private fun ShortsItemPage(
     video: VideoItem,
     pageIndex: Int,
     isActive: Boolean,
+    actionConfigs: List<ShortsActionConfig> = ShortsActionDefaults.DEFAULT_ACTIONS,
     onToggleLike: () -> Unit,
     onToggleDislike: () -> Unit,
     onToggleSubscribe: () -> Unit,
@@ -320,7 +333,7 @@ private fun ShortsItemPage(
         label = "rotation"
     )
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
@@ -692,93 +705,109 @@ private fun ShortsItemPage(
         }
 
         val appAccentColor = LocalAppAccentColor.current
+        val screenWidth = maxWidth
+        val screenHeight = maxHeight
 
-        // Right Action Buttons Bar (Safely positioned above bottom navigation bar, aligned with info section)
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 10.dp.scaled(), bottom = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp.scaled())
-        ) {
-            // 1. Thumb Up / Like (Matching Reference Photo Screen 2)
-            ShortsActionButton(
-                icon = if (video.isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-                label = video.formattedLikesCount,
-                tint = if (video.isLiked) appAccentColor else Color.White,
-                testTag = "shorts_like_button",
-                onClick = onToggleLike
-            )
+        // Dynamic Customizable Action Buttons positioned according to user settings in Settings -> Demo Shorts Editor
+        actionConfigs.filter { it.isVisible }.forEach { action ->
+            val posX = (screenWidth.value * action.xRatio).dp.coerceIn(4.dp, screenWidth - 62.dp)
+            val posY = (screenHeight.value * action.yRatio).dp.coerceIn(4.dp, screenHeight - 82.dp)
 
-            // 2. Thumb Down / Dislike (Matching Reference Photo Screen 2)
-            ShortsActionButton(
-                icon = Icons.Outlined.ThumbDown,
-                label = "Dislike",
-                tint = Color.White,
-                testTag = "shorts_dislike_button",
-                onClick = onToggleDislike
-            )
-
-            // 3. Comment Icon with live real-time count from database
-            ShortsActionButton(
-                icon = Icons.Outlined.ChatBubbleOutline,
-                label = video.formattedCommentsCount,
-                tint = Color.White,
-                testTag = "shorts_comment_button",
-                onClick = onOpenComments
-            )
-
-            // 4. Share Icon (curved arrow)
-            ShortsActionButton(
-                icon = Icons.Outlined.Share,
-                label = "Share",
-                tint = Color.White,
-                testTag = "shorts_share_button",
-                onClick = onShare
-            )
-
-            // 5. Remix Icon
-            ShortsActionButton(
-                icon = Icons.Default.Repeat,
-                label = "Remix",
-                tint = Color.White,
-                testTag = "shorts_remix_button",
-                onClick = onRemixClick
-            )
-
-            // 6. Three-dots More Action Button
-            ShortsActionButton(
-                icon = Icons.Default.MoreVert,
-                label = "More",
-                tint = Color.White,
-                testTag = "shorts_more_button",
-                onClick = onOpenMenu
-            )
-
-            // 7. Audio / Sound Thumbnail Card at the very bottom right
             Box(
                 modifier = Modifier
-                    .size(32.dp.scaled())
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFF222222))
-                    .border(1.2.dp.scaled(), Color.White.copy(alpha = 0.8f), RoundedCornerShape(6.dp))
-                    .rotate(rotation)
-                    .clickable { onRemixClick() },
+                    .offset(x = posX, y = posY)
+                    .graphicsLayer(scaleX = action.scale, scaleY = action.scale),
                 contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(14.dp.scaled())
-                        .clip(CircleShape)
-                        .background(YtRed),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MusicNote,
-                        contentDescription = "Sound Album",
-                        tint = Color.White,
-                        modifier = Modifier.size(9.dp.scaled())
-                    )
+                when (action.id) {
+                    ShortsActionIds.LIKE -> {
+                        ShortsActionButton(
+                            icon = if (video.isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                            label = video.formattedLikesCount,
+                            tint = if (video.isLiked) appAccentColor else Color.White,
+                            testTag = "shorts_like_button",
+                            onClick = onToggleLike
+                        )
+                    }
+                    ShortsActionIds.DISLIKE -> {
+                        ShortsActionButton(
+                            icon = Icons.Outlined.ThumbDown,
+                            label = "Dislike",
+                            tint = Color.White,
+                            testTag = "shorts_dislike_button",
+                            onClick = onToggleDislike
+                        )
+                    }
+                    ShortsActionIds.COMMENT -> {
+                        ShortsActionButton(
+                            icon = Icons.Outlined.ChatBubbleOutline,
+                            label = video.formattedCommentsCount,
+                            tint = Color.White,
+                            testTag = "shorts_comment_button",
+                            onClick = onOpenComments
+                        )
+                    }
+                    ShortsActionIds.SHARE -> {
+                        ShortsActionButton(
+                            icon = Icons.Outlined.Share,
+                            label = "Share",
+                            tint = Color.White,
+                            testTag = "shorts_share_button",
+                            onClick = onShare
+                        )
+                    }
+                    ShortsActionIds.REMIX -> {
+                        ShortsActionButton(
+                            icon = Icons.Default.Repeat,
+                            label = "Remix",
+                            tint = Color.White,
+                            testTag = "shorts_remix_button",
+                            onClick = onRemixClick
+                        )
+                    }
+                    ShortsActionIds.MORE_MENU -> {
+                        ShortsActionButton(
+                            icon = Icons.Default.MoreVert,
+                            label = "More",
+                            tint = Color.White,
+                            testTag = "shorts_more_button",
+                            onClick = onOpenMenu
+                        )
+                    }
+                    ShortsActionIds.SUBSCRIBE -> {
+                        LiquidGlassSubscribeButton(
+                            isSubscribed = video.isSubscribed,
+                            onToggleSubscribe = onToggleSubscribe,
+                            testTag = "shorts_custom_subscribe_button"
+                        )
+                    }
+                    ShortsActionIds.SOUND_TRACK -> {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp.scaled())
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFF222222))
+                                .border(1.2.dp.scaled(), Color.White.copy(alpha = 0.8f), RoundedCornerShape(6.dp))
+                                .rotate(rotation)
+                                .clickable { onRemixClick() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(14.dp.scaled())
+                                    .clip(CircleShape)
+                                    .background(YtRed),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.MusicNote,
+                                    contentDescription = "Sound Album",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(9.dp.scaled())
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

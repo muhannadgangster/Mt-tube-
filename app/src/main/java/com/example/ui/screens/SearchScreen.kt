@@ -52,7 +52,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.graphics.Brush
+import com.example.data.SettingsManager
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -103,6 +109,7 @@ fun SearchScreen(
     onClearHistory: () -> Unit,
     onVideoClick: (VideoItem) -> Unit,
     onBack: () -> Unit,
+    settingsManager: SettingsManager? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -160,10 +167,42 @@ fun SearchScreen(
         }
     }
 
+    val searchBgType by settingsManager?.searchBackgroundType?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf("Default Dark") }
+    val searchBgColorHex by settingsManager?.searchBackgroundCustomColorHex?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf(0xFF141928L) }
+    val searchGlassTrans by settingsManager?.searchGlassTransparency?.collectAsStateWithLifecycle()
+        ?: remember { mutableFloatStateOf(0.65f) }
+    val searchGlassRefract by settingsManager?.searchGlassRefraction?.collectAsStateWithLifecycle()
+        ?: remember { mutableFloatStateOf(0.40f) }
+    val searchGlassHigh by settingsManager?.searchGlassHighlights?.collectAsStateWithLifecycle()
+        ?: remember { mutableFloatStateOf(0.55f) }
+
+    val backgroundBrush = remember(searchBgType, searchBgColorHex) {
+        when (searchBgType) {
+            "Deep Ocean Blue" -> Brush.verticalGradient(listOf(Color(0xFF0D1B2A), Color(0xFF1B263B), Color(0xFF0F172A)))
+            "Glass Prism" -> Brush.verticalGradient(listOf(Color(0xFF181028), Color(0xFF1B1B3A), Color(0xFF0B132B)))
+            "Obsidian Smoke" -> Brush.verticalGradient(listOf(Color(0xFF1C1C1C), Color(0xFF121212), Color(0xFF080808)))
+            "Custom Color" -> Brush.verticalGradient(listOf(Color(searchBgColorHex), Color(0xFF0A0A0A)))
+            "App Wallpaper" -> Brush.verticalGradient(listOf(Color(0xFF1A1F38), Color(0xFF0F111E)))
+            else -> SolidColor(YtDarkBackground)
+        }
+    }
+
+    val baseGlassConfig = LocalLiquidGlassConfig.current
+    val effectiveSearchGlassConfig = remember(baseGlassConfig, searchGlassTrans, searchGlassRefract, searchGlassHigh) {
+        baseGlassConfig.copy(
+            transparency = searchGlassTrans,
+            refractionAmount = searchGlassRefract,
+            edgeHighlights = searchGlassHigh
+        )
+    }
+
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(YtDarkBackground)
+            .background(backgroundBrush)
             .statusBarsPadding()
             .testTag("search_screen_container")
     ) {
@@ -193,16 +232,15 @@ fun SearchScreen(
                 Spacer(modifier = Modifier.width(4.dp))
 
                 // Search Input Field Box
-                val glassConfig = LocalLiquidGlassConfig.current
                 Row(
                     modifier = Modifier
                         .weight(1f)
                         .height(44.dp)
                         .then(
-                            if (glassConfig.isEnabled || glassConfig.neonEnabled) {
+                            if (effectiveSearchGlassConfig.isEnabled || effectiveSearchGlassConfig.neonEnabled) {
                                 Modifier.liquidGlassSurface(
                                     shape = RoundedCornerShape(22.dp),
-                                    config = glassConfig,
+                                    config = effectiveSearchGlassConfig,
                                     elevation = 4.dp
                                 )
                             } else {

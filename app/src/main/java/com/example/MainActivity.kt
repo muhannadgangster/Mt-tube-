@@ -621,6 +621,7 @@ fun MyTubeApp(
                 onBack = {
                     viewModel.setSearchActive(false)
                 },
+                settingsManager = viewModel.settingsManager,
                 modifier = Modifier.fillMaxSize()
             )
         } else if (currentlyPlaying != null && !isPlayerMinimized) {
@@ -848,7 +849,8 @@ fun MyTubeApp(
                                     onNotificationsClick = { viewModel.setNotificationsSheetOpen(true) },
                                     unreadNotificationCount = unreadNotificationCount,
                                     onToggleDownload = { viewModel.toggleDownloaded(it) },
-                                    onBackClick = { viewModel.selectTab(0) }
+                                    onBackClick = { viewModel.selectTab(0) },
+                                    settingsManager = viewModel.settingsManager
                                 )
 
                                 3 -> SubscriptionsScreen(
@@ -859,7 +861,8 @@ fun MyTubeApp(
                                     onToggleSubscribe = { viewModel.toggleSubscribe(it) },
                                     onToggleDownload = { viewModel.toggleDownloaded(it) },
                                     onShareClick = { shareVideo(it) },
-                                    onExploreClick = { viewModel.selectTab(0) }
+                                    onExploreClick = { viewModel.selectTab(0) },
+                                    settingsManager = viewModel.settingsManager
                                 )
 
                                 4 -> {
