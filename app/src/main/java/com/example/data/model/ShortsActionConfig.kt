@@ -66,14 +66,12 @@ object ShortsActionIds {
 
 object ShortsActionDefaults {
     val DEFAULT_ACTIONS: List<ShortsActionConfig> = listOf(
-        ShortsActionConfig(id = ShortsActionIds.LIKE, name = "Like", isVisible = true, xRatio = 0.86f, yRatio = 0.44f),
-        ShortsActionConfig(id = ShortsActionIds.DISLIKE, name = "Dislike", isVisible = true, xRatio = 0.86f, yRatio = 0.53f),
-        ShortsActionConfig(id = ShortsActionIds.COMMENT, name = "Comment", isVisible = true, xRatio = 0.86f, yRatio = 0.62f),
-        ShortsActionConfig(id = ShortsActionIds.SHARE, name = "Share", isVisible = true, xRatio = 0.86f, yRatio = 0.71f),
-        ShortsActionConfig(id = ShortsActionIds.REMIX, name = "Remix", isVisible = true, xRatio = 0.86f, yRatio = 0.79f),
-        ShortsActionConfig(id = ShortsActionIds.MORE_MENU, name = "More Menu", isVisible = true, xRatio = 0.86f, yRatio = 0.87f, isProtected = true),
-        ShortsActionConfig(id = ShortsActionIds.SUBSCRIBE, name = "Subscribe", isVisible = true, xRatio = 0.52f, yRatio = 0.88f),
-        ShortsActionConfig(id = ShortsActionIds.SOUND_TRACK, name = "Sound Track", isVisible = true, xRatio = 0.86f, yRatio = 0.94f)
+        ShortsActionConfig(id = ShortsActionIds.LIKE, name = "Like", isVisible = true, xRatio = 0.86f, yRatio = 0.48f),
+        ShortsActionConfig(id = ShortsActionIds.COMMENT, name = "Comment", isVisible = true, xRatio = 0.86f, yRatio = 0.58f),
+        ShortsActionConfig(id = ShortsActionIds.SHARE, name = "Share", isVisible = true, xRatio = 0.86f, yRatio = 0.68f),
+        ShortsActionConfig(id = ShortsActionIds.REMIX, name = "Remix", isVisible = true, xRatio = 0.86f, yRatio = 0.78f),
+        ShortsActionConfig(id = ShortsActionIds.SOUND_TRACK, name = "Sound Track", isVisible = true, xRatio = 0.86f, yRatio = 0.88f),
+        ShortsActionConfig(id = ShortsActionIds.SUBSCRIBE, name = "Subscribe", isVisible = true, xRatio = 0.45f, yRatio = 0.88f)
     )
 
     fun getDefaultActions(): List<ShortsActionConfig> = DEFAULT_ACTIONS

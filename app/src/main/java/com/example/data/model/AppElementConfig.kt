@@ -85,15 +85,13 @@ object AppElementCatalog {
     const val ART_THUMB = "thumb"
 
     fun getAllDefaultElements(): List<AppElementConfig> = listOf(
-        // Shorts
-        AppElementConfig(SHORTS_LIKE, "Shorts Like", "Shorts", true, 0.86f, 0.44f, 1.0f),
-        AppElementConfig(SHORTS_DISLIKE, "Shorts Dislike", "Shorts", true, 0.86f, 0.53f, 1.0f),
-        AppElementConfig(SHORTS_COMMENT, "Shorts Comment", "Shorts", true, 0.86f, 0.62f, 1.0f),
-        AppElementConfig(SHORTS_SHARE, "Shorts Share", "Shorts", true, 0.86f, 0.71f, 1.0f),
-        AppElementConfig(SHORTS_REMIX, "Shorts Remix", "Shorts", true, 0.86f, 0.79f, 1.0f),
-        AppElementConfig(SHORTS_SUBSCRIBE, "Shorts Subscribe", "Shorts", true, 0.52f, 0.88f, 1.0f),
-        AppElementConfig(SHORTS_SOUND, "Shorts Sound Track", "Shorts", true, 0.86f, 0.94f, 1.0f),
-        AppElementConfig(SHORTS_MORE, "Shorts More Menu", "Shorts", true, 0.86f, 0.87f, 1.0f, isProtected = true),
+        // Shorts Action Column & Controls
+        AppElementConfig(SHORTS_LIKE, "Shorts Like", "Shorts", true, 0.86f, 0.46f, 1.0f),
+        AppElementConfig(SHORTS_COMMENT, "Shorts Comment", "Shorts", true, 0.86f, 0.56f, 1.0f),
+        AppElementConfig(SHORTS_SHARE, "Shorts Share", "Shorts", true, 0.86f, 0.66f, 1.0f),
+        AppElementConfig(SHORTS_REMIX, "Shorts Remix", "Shorts", true, 0.86f, 0.76f, 1.0f),
+        AppElementConfig(SHORTS_SOUND, "Shorts Sound Track", "Shorts", true, 0.86f, 0.86f, 1.0f),
+        AppElementConfig(SHORTS_SUBSCRIBE, "Shorts Subscribe", "Shorts", true, 0.50f, 0.88f, 1.0f),
 
         // Home
         AppElementConfig(HOME_SEARCH, "Home Search Bar", "Home", true, 0.72f, 0.04f, 1.0f),

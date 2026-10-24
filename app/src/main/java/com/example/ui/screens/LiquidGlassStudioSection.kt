@@ -235,21 +235,55 @@ fun LazyListScope.liquidGlassStudioItems(
                 .clip(RoundedCornerShape(20.dp))
                 .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
         ) {
-            // Vivid Background Wallpaper behind glass to display refraction and transparency
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.linearGradient(
-                            listOf(
-                                Color(0xFF1A1A36),
-                                Color(0xFF0F3460),
-                                Color(0xFFE94560).copy(alpha = 0.4f),
-                                Color(0xFF16213E)
-                            )
+            // High-Contrast Vivid Background Wallpaper with live optical refraction grid
+            androidx.compose.foundation.Canvas(
+                modifier = Modifier.matchParentSize()
+            ) {
+                // Background dark gradient
+                drawRect(
+                    brush = Brush.linearGradient(
+                        listOf(
+                            Color(0xFF131525),
+                            Color(0xFF0F2646),
+                            Color(0xFF8B124B).copy(alpha = 0.45f),
+                            Color(0xFF101B34)
                         )
                     )
-            )
+                )
+
+                // High contrast grid stripes: Outside glass they are straight; inside the glass area they optically displace and bend with refraction
+                val cardWidth = size.width
+                val cardHeight = size.height
+                val bendAmount = lgRefraction * 16.dp.toPx()
+
+                // Draw background horizontal optical lines
+                val lineYPositions = listOf(0.20f, 0.35f, 0.50f, 0.65f, 0.80f)
+                lineYPositions.forEachIndexed { i, yRatio ->
+                    val baseY = cardHeight * yRatio
+                    val path = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(0f, baseY)
+                        // Smooth convex optical refraction curve
+                        cubicTo(
+                            cardWidth * 0.25f, baseY + bendAmount * (if (i % 2 == 0) 1f else -0.8f),
+                            cardWidth * 0.75f, baseY + bendAmount * (if (i % 2 == 0) 1f else -0.8f),
+                            cardWidth, baseY
+                        )
+                    }
+                    drawPath(
+                        path = path,
+                        color = if (i % 2 == 0) Color(0xFF00E5FF).copy(alpha = 0.45f) else Color(0xFFFF4081).copy(alpha = 0.4f),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                    )
+                }
+
+                // Distinct circular lens test target in background
+                drawCircle(
+                    color = Color(0xFFFFD700).copy(alpha = 0.25f),
+                    radius = 35.dp.toPx(),
+                    center = androidx.compose.ui.geometry.Offset(cardWidth * 0.82f, cardHeight * 0.32f),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                )
+            }
 
             // Layered Glass Preview surface
             Column(
@@ -414,6 +448,32 @@ fun LazyListScope.liquidGlassStudioItems(
             accentColor = accentColor,
             onValueChange = { settingsManager.setLiquidGlassBlur(it) },
             testTag = "slider_blur_radius"
+        )
+    }
+
+    // Dedicated Control: Refraction Strength (Controls background displacement)
+    item {
+        StudioSlider(
+            label = "Refraction Strength (Optical Displacement)",
+            value = lgRefraction * 100f,
+            valueRange = 0f..100f,
+            unit = "%",
+            accentColor = accentColor,
+            onValueChange = { settingsManager.setLiquidGlassRefraction(it / 100f) },
+            testTag = "slider_core_refraction_strength"
+        )
+    }
+
+    // Dedicated Control: Distortion Amount (Controls overall intensity of bending/warping)
+    item {
+        StudioSlider(
+            label = "Distortion Amount (Lens Curvature)",
+            value = lgRefractionHeight * 100f,
+            valueRange = 0f..100f,
+            unit = "%",
+            accentColor = accentColor,
+            onValueChange = { settingsManager.setLiquidGlassRefractionHeight(it / 100f) },
+            testTag = "slider_core_distortion_amount"
         )
     }
 

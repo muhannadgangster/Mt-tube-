@@ -132,8 +132,8 @@ fun DemoAndCustomizationScreen(
     var localConfigs by remember(elementConfigs) { mutableStateOf(elementConfigs) }
 
     // Screen tab selection
-    val screenTabs = listOf("Shorts", "Home", "Player", "Profile", "Subscriptions", "Search", "Notifications", "Navigation")
-    var selectedScreenTab by remember { mutableStateOf("Shorts") }
+    val screenTabs = listOf("Home", "Shorts", "Player", "Profile", "Subscriptions", "Search", "Navigation")
+    var selectedScreenTab by remember { mutableStateOf("Home") }
 
     // Selection & Dragging state
     var selectedElementId by remember { mutableStateOf<String?>(null) }
@@ -167,11 +167,11 @@ fun DemoAndCustomizationScreen(
             .background(YtDarkBackground)
             .statusBarsPadding()
     ) {
-        // Top Toolbar
+        // Top Toolbar with Cancel, Reset Default, and Apply buttons
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(
@@ -193,24 +193,31 @@ fun DemoAndCustomizationScreen(
                     color = Color.White
                 )
                 Text(
-                    text = "Interactive preview • 3s hold to drag • Gallery button editor",
+                    text = "Interactive preview • 3s hold to drag • Gallery artwork",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray,
                     fontSize = 11.sp
                 )
             }
 
+            TextButton(
+                onClick = onBack,
+                modifier = Modifier.testTag("customization_cancel_button")
+            ) {
+                Text("Cancel", color = Color.LightGray, fontSize = 12.sp)
+            }
+
             IconButton(
                 onClick = {
                     settingsManager.resetAppElementConfigs()
                     localConfigs = AppElementCatalog.getAllDefaultElements()
-                    Toast.makeText(context, "Reset all layout & artwork to default", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Restored original layout", Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier.testTag("customization_reset_button")
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
-                    contentDescription = "Reset Defaults",
+                    contentDescription = "Reset Default",
                     tint = Color.LightGray
                 )
             }
@@ -218,14 +225,26 @@ fun DemoAndCustomizationScreen(
             Button(
                 onClick = {
                     settingsManager.saveAppElementConfigs(localConfigs)
-                    // Also propagate shorts actions if needed
+                    // Also synchronize ShortsActionConfigs
+                    val shortsConfigs = localConfigs.filter { it.screen == "Shorts" }.map {
+                        com.example.data.model.ShortsActionConfig(
+                            id = it.id,
+                            name = it.name,
+                            isVisible = it.isVisible,
+                            xRatio = it.xRatio,
+                            yRatio = it.yRatio,
+                            isProtected = it.isProtected,
+                            scale = it.scale
+                        )
+                    }
+                    settingsManager.saveShortsActionConfigs(shortsConfigs)
                     Toast.makeText(context, "Customizations applied to app!", Toast.LENGTH_SHORT).show()
                     onBack()
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = accentColor),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
-                    .padding(start = 4.dp)
+                    .padding(start = 2.dp)
                     .testTag("customization_apply_button")
             ) {
                 Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -628,63 +647,85 @@ private fun RenderCustomizableElement(
     val sizeDp = (48.dp * config.scale)
     val isPill = config.id.contains("subscribe") || config.id.contains("edit") || config.id.contains("downloads")
 
-    Box(
-        modifier = Modifier
-            .size(if (isPill) sizeDp * 2.2f else sizeDp, sizeDp)
-            .clip(if (isPill) RoundedCornerShape(24.dp) else CircleShape)
-            .background(
-                when {
-                    isDragged -> Color(0xFFC62828).copy(alpha = 0.85f)
-                    isSelected -> accentColor.copy(alpha = 0.35f)
-                    else -> Color(0x33000000)
-                }
-            )
-            .border(
-                width = if (isDragged || isSelected) 2.dp else 1.dp,
-                color = when {
-                    isDragged -> Color.Red
-                    isSelected -> accentColor
-                    else -> Color.White.copy(alpha = 0.4f)
-                },
-                shape = if (isPill) RoundedCornerShape(24.dp) else CircleShape
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        if (!customArtwork.isNullOrBlank()) {
-            val file = File(customArtwork)
-            AsyncImage(
-                model = if (file.exists()) file else customArtwork,
-                contentDescription = config.name,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(if (isPill) RoundedCornerShape(24.dp) else CircleShape),
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            // Render default vector icon for element
-            val iconVector = getIconForElement(config.id)
-            if (isPill) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                ) {
-                    Icon(iconVector, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = if (config.id.contains("subscribe")) "Subscribe" else config.name.take(9),
-                        color = Color.White,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
+    Box(contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .size(if (isPill) sizeDp * 2.2f else sizeDp, sizeDp)
+                .clip(if (isPill) RoundedCornerShape(24.dp) else CircleShape)
+                .background(
+                    when {
+                        isDragged -> Color(0xFFC62828).copy(alpha = 0.85f)
+                        isSelected -> accentColor.copy(alpha = 0.35f)
+                        else -> Color(0x33000000)
+                    }
+                )
+                .border(
+                    width = if (isDragged || isSelected) 2.5.dp else 1.dp,
+                    color = when {
+                        isDragged -> Color.Red
+                        isSelected -> accentColor
+                        else -> Color.White.copy(alpha = 0.4f)
+                    },
+                    shape = if (isPill) RoundedCornerShape(24.dp) else CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (!customArtwork.isNullOrBlank()) {
+                val file = File(customArtwork)
+                AsyncImage(
+                    model = if (file.exists()) file else customArtwork,
+                    contentDescription = config.name,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(if (isPill) RoundedCornerShape(24.dp) else CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                // Render default vector icon for element
+                val iconVector = getIconForElement(config.id)
+                if (isPill) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    ) {
+                        Icon(iconVector, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (config.id.contains("subscribe")) "Subscribe" else config.name.take(9),
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
+                        )
+                    }
+                } else {
+                    Icon(
+                        imageVector = iconVector,
+                        contentDescription = config.name,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp * config.scale)
                     )
                 }
-            } else {
-                Icon(
-                    imageVector = iconVector,
-                    contentDescription = config.name,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp * config.scale)
+            }
+        }
+
+        // Selection Tag / Element Name chip
+        if (isSelected || isDragged) {
+            Surface(
+                color = if (isDragged) Color.Red else accentColor,
+                shape = RoundedCornerShape(4.dp),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = (-18).dp)
+            ) {
+                Text(
+                    text = config.name,
+                    color = Color.White,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.5.dp),
+                    maxLines = 1
                 )
             }
         }
@@ -714,40 +755,685 @@ private fun getIconForElement(id: String): ImageVector = when (id) {
 
 @Composable
 private fun ScreenMockupBackground(tab: String) {
+    when (tab) {
+        "Home" -> MockupHome()
+        "Shorts" -> MockupShorts()
+        "Player" -> MockupPlayer()
+        "Profile" -> MockupProfile()
+        "Subscriptions" -> MockupSubscriptions()
+        "Search" -> MockupSearch()
+        else -> MockupHome()
+    }
+}
+
+@Composable
+private fun MockupHome() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0F0F14))
+    ) {
+        // Top App Bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(YtRed),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("MyTube", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(Icons.Default.Search, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                Icon(Icons.Default.Notifications, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF26A69A)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("U", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        // Filter chips
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 3.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            listOf("All", "Shorts", "Offline", "Podcasts").forEachIndexed { idx, label ->
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (idx == 0) Color.White else Color(0xFF272727))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = label,
+                        color = if (idx == 0) Color.Black else Color.White,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Feed Item 1 (Hero Video Card)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(110.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        Brush.linearGradient(
+                            listOf(Color(0xFF1E293B), Color(0xFF0F172A), Color(0xFF334155))
+                        )
+                    ),
+                contentAlignment = Alignment.BottomEnd
+            ) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(6.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color.Black.copy(alpha = 0.7f))
+                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                ) {
+                    Text("4K HDR", color = Color.White, fontSize = 7.sp, fontWeight = FontWeight.Bold)
+                }
+                Box(
+                    modifier = Modifier
+                        .padding(6.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color.Black.copy(alpha = 0.8f))
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                ) {
+                    Text("14:28", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF00ACC1)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("M", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "MyTube Offline Showcase - Liquid Glass 3D",
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Android Studio • 1.2M views • 2 hours ago",
+                        color = Color.Gray,
+                        fontSize = 9.sp
+                    )
+                }
+                Icon(Icons.Default.MoreVert, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Feed Item 2
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(95.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        Brush.linearGradient(
+                            listOf(Color(0xFF31102F), Color(0xFF1E0A24), Color(0xFF4A154B))
+                        )
+                    ),
+                contentAlignment = Alignment.BottomEnd
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(6.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color.Black.copy(alpha = 0.8f))
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                ) {
+                    Text("08:45", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Bottom Navigation Bar Dock
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF0A0A0E))
+                .border(width = 0.5.dp, color = Color.White.copy(alpha = 0.1f))
+                .padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            listOf("Home" to Icons.Default.Home, "Shorts" to Icons.Default.Whatshot, "Sub" to Icons.Default.Subtitles, "You" to Icons.Default.Person).forEach { (name, icon) ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(icon, contentDescription = null, tint = if (name == "Home") Color.White else Color.Gray, modifier = Modifier.size(16.dp))
+                    Text(name, color = if (name == "Home") Color.White else Color.Gray, fontSize = 8.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MockupShorts() {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = when (tab) {
-                        "Shorts" -> listOf(Color(0xFF1E293B), Color(0xFF0F172A), Color(0xFF020617))
-                        "Player" -> listOf(Color(0xFF000000), Color(0xFF181822), Color(0xFF0A0A0F))
-                        "Profile" -> listOf(Color(0xFF1F1D36), Color(0xFF141226), Color(0xFF0B0A14))
-                        "Subscriptions" -> listOf(Color(0xFF181024), Color(0xFF100A18), Color(0xFF08050C))
-                        else -> listOf(Color(0xFF12141A), Color(0xFF0B0D12), Color(0xFF050608))
-                    }
+                    colors = listOf(Color(0xFF1E293B), Color(0xFF0F172A), Color(0xFF020617))
                 )
             )
     ) {
+        // Top Bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+                .align(Alignment.TopCenter),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.Search, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.MoreVert, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+            }
+        }
+
+        // Center Play Watermark / Video indicator
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.12f))
+                .align(Alignment.Center),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(24.dp))
+        }
+
+        // Bottom-Left Info Column
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(14.dp)
+                .align(Alignment.BottomStart)
+                .fillMaxWidth(0.72f)
+                .padding(start = 10.dp, bottom = 12.dp)
         ) {
+            // Channel row: Avatar + handle + single Subscribe button
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF00897B)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("S", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("@mytube_creator", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.width(6.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White)
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text("Subscribe", color = Color.Black, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
             Text(
-                text = "$tab Screen Preview",
-                color = Color.White.copy(alpha = 0.35f),
-                fontSize = 13.sp,
+                text = "Realistic 3D Liquid Glass with optical refraction #Shorts #Customizer",
+                color = Color.White,
+                fontSize = 10.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.MusicNote, contentDescription = null, tint = Color.White, modifier = Modifier.size(10.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Original sound - MyTube Beat", color = Color.White.copy(alpha = 0.8f), fontSize = 8.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MockupPlayer() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0A0A0F))
+    ) {
+        // 16:9 Video Player Viewport
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(140.dp)
+                .background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(listOf(Color(0xFF1E1B4B), Color(0xFF0F172A)))
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(36.dp))
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("04:30", color = Color.White, fontSize = 8.sp)
+                    Text("14:10", color = Color.LightGray, fontSize = 8.sp)
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(2.5.dp)
+                        .background(Color.Gray.copy(alpha = 0.4f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.32f)
+                            .height(2.5.dp)
+                            .background(YtRed)
+                    )
+                }
+            }
+        }
+
+        Column(modifier = Modifier.padding(10.dp)) {
+            Text(
+                text = "Building 3D Optical Liquid Glass in Jetpack Compose",
+                color = Color.White,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
+            Text(
+                text = "780K views • 2 days ago • #Android #Kotlin",
+                color = Color.Gray,
+                fontSize = 9.sp
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Channel row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF673AB7)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("A", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Column {
+                        Text("Android Masters", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text("920K subscribers", color = Color.Gray, fontSize = 8.sp)
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text("Subscribe", color = Color.Black, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Action Pills
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                listOf("Like (42K)", "Share", "Download").forEach { label ->
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF222634))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(label, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Comments preview
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF1E212D))
+                    .padding(8.dp)
+            ) {
+                Column {
+                    Text("Comments • 842", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text("@dev_guru: The optical background refraction is incredible!", color = Color.LightGray, fontSize = 9.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MockupProfile() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0F0F16))
+    ) {
+        // Banner Header
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(65.dp)
+                .background(
+                    Brush.linearGradient(listOf(Color(0xFF312E81), Color(0xFF4C1D95), Color(0xFF1E1B4B)))
+                )
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.offset(y = (-18).dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF009688))
+                        .border(2.dp, Color.White, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("U", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.offset(y = 8.dp)) {
+                    Text("Offline Explorer", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("@mytube_user • 24 saved items", color = Color.Gray, fontSize = 9.sp)
+                }
+            }
+
+            // Quick Stats Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                listOf("24 Downloads", "12 Playlists", "148 History").forEach { stat ->
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF1F2433))
+                            .padding(horizontal = 8.dp, vertical = 5.dp)
+                    ) {
+                        Text(stat, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text("Downloads & Storage", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(6.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(if (tab == "Player") 160.dp else 40.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color.White.copy(alpha = 0.05f))
+                    .background(Color(0xFF1A1C24))
+                    .padding(8.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF43A047)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text("3.2 GB Free • Ready for Offline Play", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                        Text("All videos stored locally on device", color = Color.Gray, fontSize = 8.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MockupSubscriptions() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0E0E14))
+    ) {
+        // Channel Stories/Avatars Horizontal Row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            listOf("Android" to Color(0xFF3DDC84), "Kotlin" to Color(0xFF7F52FF), "Compose" to Color(0xFF4285F4), "Design" to Color(0xFFEA4335)).forEach { (name, col) ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(col)
+                            .border(1.5.dp, Color.White, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(name.take(1), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(name, color = Color.White, fontSize = 8.sp)
+                }
+            }
+        }
+
+        // Filter chips
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            listOf("All", "Today", "Videos", "Shorts").forEachIndexed { idx, label ->
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (idx == 0) Color.White else Color(0xFF222634))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(label, color = if (idx == 0) Color.Black else Color.White, fontSize = 8.sp)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Subscription Feed item
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(95.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        Brush.linearGradient(listOf(Color(0xFF1E3A8A), Color(0xFF172554)))
+                    ),
+                contentAlignment = Alignment.BottomEnd
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(4.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color.Black.copy(alpha = 0.8f))
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                ) {
+                    Text("18:40", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Advanced Liquid Glass Shaders in Android",
+                color = Color.White,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold
             )
+            Text("Compose Masterclass • 4 hours ago", color = Color.Gray, fontSize = 8.sp)
+        }
+    }
+}
+
+@Composable
+private fun MockupSearch() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0F1016))
+    ) {
+        // Search Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(32.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF202433))
+                    .padding(horizontal = 10.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Liquid Glass 3D", color = Color.White, fontSize = 10.sp)
+                    Icon(Icons.Default.Close, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(14.dp))
+                }
+            }
+            Spacer(modifier = Modifier.width(6.dp))
+            Icon(Icons.Default.Mic, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+        }
+
+        // Suggestions
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+            listOf("liquid glass refraction", "shorts action customizer", "photo to video slideshow", "offline 4k player").forEach { query ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(query, color = Color.White.copy(alpha = 0.85f), fontSize = 10.sp)
+                }
+            }
         }
     }
 }

@@ -682,14 +682,23 @@ private fun ShortsItemPage(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.width(8.dp.scaled()))
+                val subscribeAction = actionConfigs.find { it.id == ShortsActionIds.SUBSCRIBE }
+                val isSubscribeVisible = subscribeAction?.isVisible != false
+                val subscribeScale = subscribeAction?.scale ?: 1.0f
 
-                // Customizable Liquid Glass Subscribe Pill button
-                LiquidGlassSubscribeButton(
-                    isSubscribed = video.isSubscribed,
-                    onToggleSubscribe = onToggleSubscribe,
-                    testTag = "shorts_subscribe_button"
-                )
+                if (isSubscribeVisible) {
+                    Spacer(modifier = Modifier.width(8.dp.scaled()))
+
+                    // Exactly ONE Customizable Liquid Glass Subscribe Pill button on Shorts
+                    LiquidGlassSubscribeButton(
+                        isSubscribed = video.isSubscribed,
+                        onToggleSubscribe = onToggleSubscribe,
+                        customArtwork = customArtworks[ShortsActionIds.SUBSCRIBE] ?: customArtworks["subscribe"],
+                        modifier = Modifier
+                            .graphicsLayer(scaleX = subscribeScale, scaleY = subscribeScale),
+                        testTag = "shorts_subscribe_button"
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(3.dp.scaled()))
@@ -777,86 +786,60 @@ private fun ShortsItemPage(
         val screenWidth = maxWidth
         val screenHeight = maxHeight
 
-        // Dynamic Customizable Action Buttons positioned according to user settings in Settings -> Demo Shorts Editor
-        actionConfigs.filter { it.isVisible }.forEach { action ->
-            val posX = (screenWidth.value * action.xRatio).dp.coerceIn(4.dp, screenWidth - 62.dp)
-            val posY = (screenHeight.value * action.yRatio).dp.coerceIn(4.dp, screenHeight - 82.dp)
+        // Dynamic Customizable Action Buttons: Exclude DISLIKE, MORE_MENU, and duplicate SUBSCRIBE from right action column
+        actionConfigs
+            .filter { it.isVisible && it.id != ShortsActionIds.DISLIKE && it.id != ShortsActionIds.MORE_MENU && it.id != ShortsActionIds.SUBSCRIBE }
+            .forEach { action ->
+                val posX = (screenWidth.value * action.xRatio).dp.coerceIn(4.dp, screenWidth - 62.dp)
+                val posY = (screenHeight.value * action.yRatio).dp.coerceIn(4.dp, screenHeight - 82.dp)
 
-            Box(
-                modifier = Modifier
-                    .offset(x = posX, y = posY)
-                    .graphicsLayer(scaleX = action.scale, scaleY = action.scale),
-                contentAlignment = Alignment.Center
-            ) {
-                when (action.id) {
-                    ShortsActionIds.LIKE -> {
-                        ShortsActionButton(
-                            icon = if (video.isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-                            label = video.formattedLikesCount,
-                            tint = if (video.isLiked) appAccentColor else Color.White,
-                            testTag = "shorts_like_button",
-                            customArtwork = customArtworks[action.id],
-                            onClick = onToggleLike
-                        )
-                    }
-                    ShortsActionIds.DISLIKE -> {
-                        ShortsActionButton(
-                            icon = Icons.Outlined.ThumbDown,
-                            label = "Dislike",
-                            tint = Color.White,
-                            testTag = "shorts_dislike_button",
-                            customArtwork = customArtworks[action.id],
-                            onClick = onToggleDislike
-                        )
-                    }
-                    ShortsActionIds.COMMENT -> {
-                        ShortsActionButton(
-                            icon = Icons.Outlined.ChatBubbleOutline,
-                            label = video.formattedCommentsCount,
-                            tint = Color.White,
-                            testTag = "shorts_comment_button",
-                            customArtwork = customArtworks[action.id],
-                            onClick = onOpenComments
-                        )
-                    }
-                    ShortsActionIds.SHARE -> {
-                        ShortsActionButton(
-                            icon = Icons.Outlined.Share,
-                            label = "Share",
-                            tint = Color.White,
-                            testTag = "shorts_share_button",
-                            customArtwork = customArtworks[action.id],
-                            onClick = onShare
-                        )
-                    }
-                    ShortsActionIds.REMIX -> {
-                        ShortsActionButton(
-                            icon = Icons.Default.Repeat,
-                            label = "Remix",
-                            tint = Color.White,
-                            testTag = "shorts_remix_button",
-                            customArtwork = customArtworks[action.id],
-                            onClick = onRemixClick
-                        )
-                    }
-                    ShortsActionIds.MORE_MENU -> {
-                        ShortsActionButton(
-                            icon = Icons.Default.MoreVert,
-                            label = "More",
-                            tint = Color.White,
-                            testTag = "shorts_more_button",
-                            customArtwork = customArtworks[action.id],
-                            onClick = onOpenMenu
-                        )
-                    }
-                    ShortsActionIds.SUBSCRIBE -> {
-                        LiquidGlassSubscribeButton(
-                            isSubscribed = video.isSubscribed,
-                            onToggleSubscribe = onToggleSubscribe,
-                            customArtwork = customArtworks[action.id],
-                            testTag = "shorts_custom_subscribe_button"
-                        )
-                    }
+                Box(
+                    modifier = Modifier
+                        .offset(x = posX, y = posY)
+                        .graphicsLayer(scaleX = action.scale, scaleY = action.scale),
+                    contentAlignment = Alignment.Center
+                ) {
+                    when (action.id) {
+                        ShortsActionIds.LIKE -> {
+                            ShortsActionButton(
+                                icon = if (video.isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                                label = video.formattedLikesCount,
+                                tint = if (video.isLiked) appAccentColor else Color.White,
+                                testTag = "shorts_like_button",
+                                customArtwork = customArtworks[action.id],
+                                onClick = onToggleLike
+                            )
+                        }
+                        ShortsActionIds.COMMENT -> {
+                            ShortsActionButton(
+                                icon = Icons.Outlined.ChatBubbleOutline,
+                                label = video.formattedCommentsCount,
+                                tint = Color.White,
+                                testTag = "shorts_comment_button",
+                                customArtwork = customArtworks[action.id],
+                                onClick = onOpenComments
+                            )
+                        }
+                        ShortsActionIds.SHARE -> {
+                            ShortsActionButton(
+                                icon = Icons.Outlined.Share,
+                                label = "Share",
+                                tint = Color.White,
+                                testTag = "shorts_share_button",
+                                customArtwork = customArtworks[action.id],
+                                onClick = onShare
+                            )
+                        }
+                        ShortsActionIds.REMIX -> {
+                            ShortsActionButton(
+                                icon = Icons.Default.Repeat,
+                                label = "Remix",
+                                tint = Color.White,
+                                testTag = "shorts_remix_button",
+                                customArtwork = customArtworks[action.id],
+                                onClick = onRemixClick
+                            )
+                        }
                     ShortsActionIds.SOUND_TRACK -> {
                         Box(
                             modifier = Modifier
