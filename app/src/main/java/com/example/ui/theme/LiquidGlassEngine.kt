@@ -202,13 +202,13 @@ fun Modifier.liquidGlassSurface(
 
     val isDark = config.isDarkGlass
 
-    // 2. TRANSPARENCY & TINT: Base translucent glass material
-    val baseAlpha = ((1f - config.transparency.coerceIn(0.1f, 0.95f)) * 0.85f).coerceIn(0.08f, 0.92f)
+    // 2. TRANSPARENCY & TINT: Fluid crystal-clear optical glass base
+    val baseAlpha = ((1f - config.transparency.coerceIn(0.1f, 0.98f)) * 0.25f).coerceIn(0.02f, 0.28f)
     val customTintColor = Color(config.glassTintColorHex)
     val baseGlassColor = if (config.glassTintColorHex != 0x35141928L && customTintColor.alpha > 0.01f) {
         customTintColor.copy(alpha = baseAlpha)
     } else if (isDark) {
-        Color(0xFF141928).copy(alpha = baseAlpha)
+        Color(0xFF0F172A).copy(alpha = baseAlpha)
     } else {
         Color(0xFFFFFFFF).copy(alpha = baseAlpha)
     }
@@ -254,10 +254,10 @@ fun Modifier.liquidGlassSurface(
             if (config.isEnabled && config.opticalShaderEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 Modifier.graphicsLayer {
                     try {
-                        val shader = com.mytube.ui.glass.LiquidGlassShader.create()
+                        val shader = com.mytube.ui.glass.LiquidGlassShader.obtain()
                         shader.setFloatUniform("resolution", size.width, size.height)
                         shader.setFloatUniform("cornerRadius", config.cornerRadiusDp * density)
-                        shader.setFloatUniform("strength", config.refractionAmount * 1.5f)
+                        shader.setFloatUniform("strength", config.refractionAmount * 1.6f)
                         shader.setFloatUniform("time", (System.currentTimeMillis() % 100000L) / 1000f)
                         renderEffect = AndroidRenderEffect
                             .createRuntimeShaderEffect(shader, "background")

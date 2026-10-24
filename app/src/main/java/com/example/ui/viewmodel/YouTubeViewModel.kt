@@ -271,7 +271,7 @@ class YouTubeViewModel(application: Application) : AndroidViewModel(application)
             _isRefreshing.value = true
             repository.scanStorage()
             _shuffleSeed.value = System.currentTimeMillis()
-            kotlinx.coroutines.delay(650)
+            kotlinx.coroutines.delay(120)
             _isRefreshing.value = false
         }
     }

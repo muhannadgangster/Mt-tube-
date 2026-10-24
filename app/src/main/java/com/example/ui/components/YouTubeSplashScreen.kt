@@ -61,41 +61,41 @@ fun YouTubeSplashScreen(
     val progress = remember { Animatable(0.0f) }
 
     LaunchedEffect(Unit) {
-        // Step 1: Display centered YouTube logo for 600ms
-        delay(600)
+        // Step 1: Display centered YouTube logo briefly
+        delay(200)
 
         // Step 2: Animate logo shrink and crossfade to loading bar
         initialLogoScale.animateTo(
             targetValue = 0.85f,
-            animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing)
+            animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
         )
         initialLogoAlpha.animateTo(
             targetValue = 0.0f,
-            animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing)
+            animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing)
         )
 
         // Fade in progress bar & play icon
         progressBarAlpha.animateTo(
             targetValue = 1.0f,
-            animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing)
+            animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing)
         )
 
-        // Step 3: Smooth progress fill from 0% to 100% over 1800ms (Total ~2.7s)
+        // Step 3: Fast smooth progress fill
         progress.animateTo(
             targetValue = 1.0f,
-            animationSpec = tween(durationMillis = 1800, easing = LinearEasing)
+            animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing)
         )
 
-        delay(150)
+        delay(80)
 
         // Step 4: Seamless fade out & scale up overlay transition
         splashScale.animateTo(
-            targetValue = 1.06f,
-            animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing)
+            targetValue = 1.04f,
+            animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
         )
         splashAlpha.animateTo(
             targetValue = 0.0f,
-            animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing)
+            animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
         )
 
         onAnimationComplete()

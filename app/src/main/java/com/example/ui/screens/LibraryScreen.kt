@@ -101,7 +101,7 @@ fun LibraryScreen(
             .fillMaxSize()
             .background(if (isGlass) Color.Transparent else YtDarkBackground)
             .testTag("library_screen_column"),
-        contentPadding = PaddingValues(bottom = 90.dp)
+        contentPadding = PaddingValues(bottom = 12.dp)
     ) {
         // Single Header Row - Top of 'You' Tab Screen (Matches YouTabHeader.js layout)
         item {

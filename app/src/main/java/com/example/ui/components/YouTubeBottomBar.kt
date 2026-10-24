@@ -67,8 +67,8 @@ fun YouTubeBottomBar(
     val glassConfig = LocalLiquidGlassConfig.current
     val customization = LocalUiCustomization.current
     val isGlass = glassConfig.isEnabled && customization.navBarGlassEnabled
-    val activeColor = accentColor
-    val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val activeColor = if (accentColor != Color.Unspecified && accentColor != Color.Transparent) accentColor else Color.White
+    val inactiveColor = Color.White.copy(alpha = 0.72f)
     val barHeight = customization.navBarHeightDp.dp.coerceAtLeast(46.dp)
     val showLabels = customization.navBarShowLabels
 
@@ -87,10 +87,10 @@ fun YouTubeBottomBar(
                     )
                 } else {
                     Modifier
-                        .shadow(elevation = 6.dp, shape = dockShape, spotColor = Color(0x40000000))
+                        .shadow(elevation = 6.dp, shape = dockShape, spotColor = Color(0x60000000))
                         .clip(dockShape)
-                        .background(MaterialTheme.colorScheme.surface)
-                        .border(0.75.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f), dockShape)
+                        .background(Color(0xFF1E1E1E))
+                        .border(0.75.dp, Color.White.copy(alpha = 0.18f), dockShape)
                 }
             )
     ) {
@@ -319,7 +319,7 @@ private fun BottomNavItem(
                 text = label,
                 fontSize = 10.sp,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.72f)
             )
         }
     }

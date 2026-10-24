@@ -301,7 +301,7 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .testTag("home_videos_list"),
-                    contentPadding = PaddingValues(top = 4.dp, bottom = 80.dp)
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 12.dp)
                 ) {
                     if (selectedFilter == "Shorts") {
                         // User selected "Shorts" filter chip: Show continuous shorts grid

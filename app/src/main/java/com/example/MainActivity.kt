@@ -706,16 +706,26 @@ fun MyTubeApp(
                 containerColor = if (hasCustomWallpaper || isGlassTheme) Color.Transparent else MaterialTheme.colorScheme.background,
                 snackbarHost = { SnackbarHost(snackbarHostState) },
                 bottomBar = {
-                    // Stationary Bottom Navigation Bar (Stays strictly in place during Home scrolling; hidden on Shorts)
-                    if (selectedTab != 1) {
-                        YouTubeBottomBar(
-                            selectedTab = selectedTab,
-                            onTabSelected = { viewModel.selectTab(it) },
+                    // Permanent, solid-black background area behind and below the navigation bar
+                    // The video feed stops strictly above this area and never renders or scrolls behind it
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.Black)
+                    ) {
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .navigationBarsPadding()
-                                .padding(horizontal = 16.dp, vertical = 4.dp)
-                        )
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            YouTubeBottomBar(
+                                selectedTab = selectedTab,
+                                onTabSelected = { viewModel.selectTab(it) },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             ) { paddingValues ->
