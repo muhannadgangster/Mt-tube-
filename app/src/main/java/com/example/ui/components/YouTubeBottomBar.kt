@@ -75,25 +75,33 @@ fun YouTubeBottomBar(
     val dockShape = RoundedCornerShape(32.dp)
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(
-                if (isGlass) {
-                    Modifier.liquidGlassSurface(
-                        shape = dockShape,
-                        config = glassConfig,
-                        accentColor = accentColor,
-                        elevation = 8.dp
-                    )
-                } else {
-                    Modifier
-                        .shadow(elevation = 6.dp, shape = dockShape, spotColor = Color(0x60000000))
-                        .clip(dockShape)
-                        .background(Color(0xFF1E1E1E))
-                        .border(0.75.dp, Color.White.copy(alpha = 0.18f), dockShape)
-                }
-            )
+        modifier = modifier.fillMaxWidth()
     ) {
+        // 1. Dedicated Liquid Glass Dock Surface Background Layer
+        // Keeps optical tilt and refraction strictly within the dock background,
+        // tilting videos scrolling underneath while keeping foreground icons 100% sharp and readable.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .then(
+                    if (isGlass) {
+                        Modifier.liquidGlassSurface(
+                            shape = dockShape,
+                            config = glassConfig,
+                            accentColor = accentColor,
+                            elevation = 8.dp
+                        )
+                    } else {
+                        Modifier
+                            .shadow(elevation = 6.dp, shape = dockShape, spotColor = Color(0x60000000))
+                            .clip(dockShape)
+                            .background(Color(0xFF1E1E1E).copy(alpha = 0.88f))
+                            .border(0.75.dp, Color.White.copy(alpha = 0.18f), dockShape)
+                    }
+                )
+        )
+
+        // 2. Foreground Layer: Unwarped, razor-sharp icons, sliding indicator, and labels
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
@@ -102,14 +110,16 @@ fun YouTubeBottomBar(
             val totalWidth = maxWidth
             val tabWidth = totalWidth / 5
 
-            // Smooth Sliding Glass Indicator
+            // Smooth Sliding Glass Indicator with configurable physics
             val targetTabIndex = selectedTab.coerceIn(0, 4)
             val animatedTabFraction by animateFloatAsState(
                 targetValue = targetTabIndex.toFloat(),
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium
-                ),
+                animationSpec = when (glassConfig.animationSmoothnessMode) {
+                    "Instant Snappy" -> tween(durationMillis = 150, easing = LinearEasing)
+                    "Bouncy Spring" -> spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
+                    "Cinematic Slow" -> spring(dampingRatio = 0.90f, stiffness = 220f)
+                    else -> spring(dampingRatio = 0.82f, stiffness = 380f) // Silky Smooth
+                },
                 label = "sliding_tab_indicator"
             )
 
@@ -143,12 +153,10 @@ fun YouTubeBottomBar(
                                 .clip(indicatorShape)
                                 .background(accentColor)
                         } else if (isGlass) {
-                            Modifier.liquidGlassSurface(
-                                shape = indicatorShape,
-                                config = glassConfig,
-                                accentColor = accentColor,
-                                elevation = 2.dp
-                            )
+                            Modifier
+                                .clip(indicatorShape)
+                                .background(Color.White.copy(alpha = 0.14f))
+                                .border(0.75.dp, Color.White.copy(alpha = 0.28f), indicatorShape)
                         } else {
                             Modifier
                                 .clip(indicatorShape)

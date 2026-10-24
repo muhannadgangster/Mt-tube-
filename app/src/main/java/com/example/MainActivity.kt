@@ -299,6 +299,8 @@ class MainActivity : ComponentActivity() {
             val lgBevelStrength by viewModel.settingsManager.liquidGlassBevelStrength.collectAsStateWithLifecycle()
             val lgDepthIntensity by viewModel.settingsManager.liquidGlassDepthIntensity.collectAsStateWithLifecycle()
             val lgSmoothness by viewModel.settingsManager.liquidGlassSmoothness.collectAsStateWithLifecycle()
+            val lgOpticalTilt by viewModel.settingsManager.opticalTiltStrength.collectAsStateWithLifecycle()
+            val lgAnimSmoothness by viewModel.settingsManager.animationSmoothnessMode.collectAsStateWithLifecycle()
 
             val glassConfig = com.example.ui.theme.LiquidGlassStyleConfig(
                 isEnabled = lgMaster,
@@ -330,6 +332,8 @@ class MainActivity : ComponentActivity() {
                 dropReflectionY = lgDropReflY,
                 dropReflectionSoftness = lgDropReflSoftness,
                 dropSecondaryHighlight = lgDropSecHighlight,
+                opticalTiltStrength = lgOpticalTilt,
+                animationSmoothnessMode = lgAnimSmoothness,
                 convexCurvatureIntensity = lgConvexCurvature,
                 bevelStrength = lgBevelStrength,
                 depthIntensity = lgDepthIntensity,
@@ -701,33 +705,11 @@ fun MyTubeApp(
                 ((topBarTotalHeightPx + animatedTopBarOffset) / topBarTotalHeightPx).coerceIn(0f, 1f)
             } else 1f
 
-            // Main App Shell with Independent Top Bar and Stationary Bottom Bar
+            // Main App Shell with Floating Liquid Glass Navigation Bar
             Scaffold(
                 containerColor = if (hasCustomWallpaper || isGlassTheme) Color.Transparent else MaterialTheme.colorScheme.background,
                 snackbarHost = { SnackbarHost(snackbarHostState) },
-                bottomBar = {
-                    // Permanent, solid-black background area behind and below the navigation bar
-                    // The video feed stops strictly above this area and never renders or scrolls behind it
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color.Black)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .navigationBarsPadding()
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            YouTubeBottomBar(
-                                selectedTab = selectedTab,
-                                onTabSelected = { viewModel.selectTab(it) },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
-                }
+                bottomBar = {} // Solid black bar removed: Floating bar is placed as overlay over scrolling feed
             ) { paddingValues ->
                 val animatedTopPadding = if (selectedTab == 0) {
                     topBarTotalHeightDp * topBarFraction
@@ -740,7 +722,6 @@ fun MyTubeApp(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(bottom = paddingValues.calculateBottomPadding())
                         .then(
                             if (selectedTab == 0) {
                                 Modifier.nestedScroll(homeNestedScrollConnection)
@@ -955,6 +936,23 @@ fun MyTubeApp(
                                     translationY = barOffset
                                     alpha = barAlpha
                                 }
+                        )
+                    }
+
+                    // Floating Liquid Glass Navigation Bar (No solid black background container)
+                    // Content and videos scroll directly underneath it, with real optical tilt refraction!
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        YouTubeBottomBar(
+                            selectedTab = selectedTab,
+                            onTabSelected = { viewModel.selectTab(it) },
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }

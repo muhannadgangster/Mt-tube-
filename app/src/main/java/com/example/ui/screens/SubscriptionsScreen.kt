@@ -280,7 +280,7 @@ fun SubscriptionsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .testTag("subscriptions_feed_list"),
-                contentPadding = PaddingValues(top = 8.dp, bottom = 12.dp)
+                contentPadding = PaddingValues(top = 8.dp, bottom = 86.dp)
             ) {
                 items(filteredSubscribed, key = { it.id }) { video ->
                     VideoFeedCard(

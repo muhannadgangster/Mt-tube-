@@ -461,9 +461,17 @@ class SettingsManager(context: Context) {
     private val _liquidGlassLightAngle = MutableStateFlow(prefs.getFloat("lg_light_angle", 315f))
     val liquidGlassLightAngle: StateFlow<Float> = _liquidGlassLightAngle.asStateFlow()
 
-    // 3D Liquid Drop Central Reflection
-    private val _liquidGlassDropReflectionEnabled = MutableStateFlow(prefs.getBoolean("lg_drop_refl_enabled", true))
+    // 3D Liquid Drop Central Reflection (Disabled to remove central white spot artifact)
+    private val _liquidGlassDropReflectionEnabled = MutableStateFlow(prefs.getBoolean("lg_drop_refl_enabled", false))
     val liquidGlassDropReflectionEnabled: StateFlow<Boolean> = _liquidGlassDropReflectionEnabled.asStateFlow()
+
+    // Optical Tilt Control ("ٹلٹ"): Pronounced border displacement, smooth center curvature
+    private val _opticalTiltStrength = MutableStateFlow(prefs.getFloat("optical_tilt_strength", 0.85f))
+    val opticalTiltStrength: StateFlow<Float> = _opticalTiltStrength.asStateFlow()
+
+    // Animation Smoothness & Physics ("سمود اینیمیشن"): "Silky Smooth", "Bouncy Spring", "Cinematic Slow", "Instant Snappy"
+    private val _animationSmoothnessMode = MutableStateFlow(prefs.getString("animation_smoothness_mode", "Silky Smooth") ?: "Silky Smooth")
+    val animationSmoothnessMode: StateFlow<String> = _animationSmoothnessMode.asStateFlow()
 
     private val _liquidGlassDropReflectionSize = MutableStateFlow(prefs.getFloat("lg_drop_refl_size", 0.55f))
     val liquidGlassDropReflectionSize: StateFlow<Float> = _liquidGlassDropReflectionSize.asStateFlow()
@@ -645,6 +653,16 @@ class SettingsManager(context: Context) {
         prefs.edit().putString("lg_perf_mode", mode).apply()
     }
 
+    fun setOpticalTiltStrength(v: Float) {
+        _opticalTiltStrength.value = v
+        prefs.edit().putFloat("optical_tilt_strength", v).apply()
+    }
+
+    fun setAnimationSmoothnessMode(mode: String) {
+        _animationSmoothnessMode.value = mode
+        prefs.edit().putString("animation_smoothness_mode", mode).apply()
+    }
+
     fun setSubscribeGlassEnabled(v: Boolean) {
         _subscribeGlassEnabled.value = v
         prefs.edit().putBoolean("sub_glass_enabled", v).apply()
@@ -758,7 +776,9 @@ class SettingsManager(context: Context) {
         setLiquidGlassAnimationIntensity(1.0f)
         setLiquidGlassPerformanceMode("Quality")
         setLiquidGlassLightAngle(315f)
-        setLiquidGlassDropReflectionEnabled(true)
+        setLiquidGlassDropReflectionEnabled(false)
+        setOpticalTiltStrength(0.85f)
+        setAnimationSmoothnessMode("Silky Smooth")
         setLiquidGlassDropReflectionSize(0.55f)
         setLiquidGlassDropReflectionIntensity(0.75f)
         setLiquidGlassDropReflectionX(0.50f)

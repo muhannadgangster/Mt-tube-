@@ -146,14 +146,18 @@ data class LiquidGlassStyleConfig(
     val isFrosted: Boolean = true,
     // Directional Light Angle (0° .. 360°, where 315° is Top-Left)
     val lightAngleDegrees: Float = 315f,
-    // 3D Liquid Drop Central Reflection
-    val liquidDropReflectionEnabled: Boolean = true,
+    // 3D Liquid Drop Central Reflection (Disabled to remove central white spot artifact)
+    val liquidDropReflectionEnabled: Boolean = false,
     val dropReflectionSize: Float = 0.55f,
     val dropReflectionIntensity: Float = 0.75f,
     val dropReflectionX: Float = 0.50f,
     val dropReflectionY: Float = 0.35f,
     val dropReflectionSoftness: Float = 0.65f,
     val dropSecondaryHighlight: Float = 0.45f,
+    // Optical Tilt Control ("ٹلٹ"): Pronounced border displacement, smooth center curvature
+    val opticalTiltStrength: Float = 0.85f,
+    // Animation Smoothness & Physics ("سمود اینیمیشن"): "Silky Smooth", "Bouncy Spring", "Cinematic Slow", "Instant Snappy"
+    val animationSmoothnessMode: String = "Silky Smooth",
     // 3D Lens Geometry & Curvature
     val convexCurvatureIntensity: Float = 0.70f,
     val bevelStrength: Float = 0.80f,
@@ -259,6 +263,9 @@ fun Modifier.liquidGlassSurface(
                         shader.setFloatUniform("cornerRadius", config.cornerRadiusDp * density)
                         shader.setFloatUniform("strength", config.refractionAmount * 1.6f)
                         shader.setFloatUniform("time", (System.currentTimeMillis() % 100000L) / 1000f)
+                        shader.setFloatUniform("tiltStrength", config.opticalTiltStrength)
+                        val lightRad = Math.toRadians(config.lightAngleDegrees.toDouble()).toFloat()
+                        shader.setFloatUniform("lightAngle", lightRad)
                         renderEffect = AndroidRenderEffect
                             .createRuntimeShaderEffect(shader, "background")
                             .asComposeRenderEffect()
@@ -323,76 +330,7 @@ fun Modifier.liquidGlassSurface(
                 )
             }
 
-            // D. ORGANIC LIQUID-DROP CENTRAL REFLECTION
-            if (config.isEnabled && config.liquidDropReflectionEnabled && config.dropReflectionIntensity > 0.02f && size.width > 24f && size.height > 24f) {
-                val dropIntensity = config.dropReflectionIntensity.coerceIn(0f, 1f)
-                val dropX = (config.dropReflectionX - lightDirX * 0.04f).coerceIn(0.12f, 0.88f)
-                val dropY = (config.dropReflectionY - lightDirY * 0.04f).coerceIn(0.12f, 0.88f)
-                val dropCenterX = size.width * dropX
-                val dropCenterY = size.height * dropY
-                val minDim = size.width.coerceAtMost(size.height)
-                val dropRadius = (minDim * 0.36f * config.dropReflectionSize.coerceIn(0.2f, 1.2f))
-
-                // 1. Primary organic liquid droplet dome reflection
-                val primaryDropBrush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = (0.46f * dropIntensity * config.vibrancy).coerceIn(0.05f, 0.80f)),
-                        Color(0xFFE0F7FA).copy(alpha = (0.22f * dropIntensity * config.vibrancy).coerceIn(0.02f, 0.45f)),
-                        Color(0xFF80D8FF).copy(alpha = (0.08f * dropIntensity * config.refractionAmount).coerceIn(0.01f, 0.22f)),
-                        Color.Transparent
-                    ),
-                    center = Offset(dropCenterX, dropCenterY),
-                    radius = dropRadius * config.dropReflectionSoftness.coerceIn(0.4f, 1.6f)
-                )
-                drawCircle(
-                    brush = primaryDropBrush,
-                    radius = dropRadius,
-                    center = Offset(dropCenterX, dropCenterY)
-                )
-
-                // 2. Curved specular liquid-crest meniscus (crescent curved top highlight)
-                val crescentWidth = dropRadius * 0.80f
-                val crescentHeight = dropRadius * 0.28f
-                val crescentTopLeft = Offset(
-                    dropCenterX - crescentWidth / 2f - lightDirX * dropRadius * 0.12f,
-                    dropCenterY - dropRadius * 0.28f - lightDirY * dropRadius * 0.12f
-                )
-                drawOval(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = (0.75f * dropIntensity).coerceIn(0.10f, 0.95f)),
-                            Color.White.copy(alpha = (0.22f * dropIntensity).coerceIn(0.02f, 0.45f)),
-                            Color.Transparent
-                        ),
-                        center = Offset(crescentTopLeft.x + crescentWidth / 2f, crescentTopLeft.y + crescentHeight / 2f),
-                        radius = crescentWidth * 0.65f
-                    ),
-                    topLeft = crescentTopLeft,
-                    size = Size(crescentWidth, crescentHeight)
-                )
-
-                // 3. Secondary internal droplet bounce highlight (internal refraction)
-                if (config.dropSecondaryHighlight > 0.05f) {
-                    val secRadius = dropRadius * 0.38f
-                    val secCenter = Offset(
-                        dropCenterX + lightDirX * dropRadius * 0.20f,
-                        dropCenterY + dropRadius * 0.28f + lightDirY * dropRadius * 0.20f
-                    )
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = (0.28f * dropIntensity * config.dropSecondaryHighlight).coerceIn(0.02f, 0.45f)),
-                                Color(0xFF80D8FF).copy(alpha = (0.10f * dropIntensity * config.dropSecondaryHighlight).coerceIn(0.01f, 0.25f)),
-                                Color.Transparent
-                            ),
-                            center = secCenter,
-                            radius = secRadius
-                        ),
-                        radius = secRadius,
-                        center = secCenter
-                    )
-                }
-            }
+            // D. Central droplet white spot removed per user specification: Clean, clear authentic lens without artifacts
 
             // E. DIRECTIONAL EDGE HIGHLIGHTS & SPECULAR BEVEL (modulated by lightAngleDegrees)
             if (config.isEnabled && config.edgeHighlights > 0.05f) {

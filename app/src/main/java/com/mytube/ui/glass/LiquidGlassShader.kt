@@ -22,6 +22,8 @@ object LiquidGlassShader {
         uniform float cornerRadius;
         uniform float strength;
         uniform float time;
+        uniform float tiltStrength;
+        uniform float lightAngle;
 
         half4 main(float2 p) {
             float2 size = max(resolution, float2(1.0, 1.0));
@@ -57,17 +59,20 @@ object LiquidGlassShader {
             // Fluid surface normal vector
             float2 normal = normCoord * (1.15 - z * 0.35);
             
-            // Meniscus rim factor along curved perimeter
-            float rimFactor = exp(-abs(sdf) / 16.0);
+            // Border proximity: 0.0 in interior, rising sharply to 1.0 at outer curved edges
+            float borderDist = clamp(-sdf, 0.0, 36.0);
+            float borderProximity = 1.0 - smoothstep(1.0, 22.0, borderDist);
             
             // Optical tilt & refraction displacement:
-            // Combines continuous fluid dome tilt with pronounced perimeter meniscus bending
-            float refractStrength = clamp(strength, 0.0, 2.5);
-            float tiltAmount = (distSq * 0.42 + rimFactor * 0.88) * refractStrength * 14.0;
+            // Pronounced tilt near borders, gentle smooth tilt in center
+            float effTilt = clamp(tiltStrength, 0.0, 3.0);
+            float borderTilt = pow(borderProximity, 1.20) * 2.4;
+            float centerTilt = distSq * 0.32;
+            float tiltAmount = (centerTilt + borderTilt) * effTilt * 18.0;
             float2 offset = normal * tiltAmount;
 
-            // Chromatic dispersion (prismatic color separation through optical glass)
-            float disp = 0.016 * refractStrength * (distSq * 0.4 + rimFactor * 0.8);
+            // Chromatic dispersion (prismatic color separation on curved glass edges)
+            float disp = 0.022 * effTilt * (borderProximity * 1.35 + distSq * 0.28);
             float2 uvR = clamp(p - offset * (1.0 + disp), float2(0.0, 0.0), size - float2(1.0, 1.0));
             float2 uvG = clamp(p - offset, float2(0.0, 0.0), size - float2(1.0, 1.0));
             float2 uvB = clamp(p - offset * (1.0 - disp), float2(0.0, 0.0), size - float2(1.0, 1.0));
@@ -77,20 +82,21 @@ object LiquidGlassShader {
             half blue = background.eval(uvB).b;
             half3 glassCol = half3(red, green, blue);
 
-            // Crystal-clear fluid transparency: subtle crystalline enhancement
-            glassCol *= half3(1.01, 1.02, 1.04);
+            // Crystal-clear fluid transparency without dark fills
+            glassCol *= half3(1.01, 1.02, 1.03);
 
-            // Specular Fresnel rim light: Top-left bright meniscus reflection
-            float2 lightDir = normalize(float2(-0.7, -0.7));
+            // Specular Fresnel rim light: Directional highlight along perimeter
+            float2 lightDir = float2(cos(lightAngle), sin(lightAngle));
             float specular = max(0.0, dot(normal, -lightDir));
-            float rimLight = pow(specular, 4.0) * rimFactor * 0.38 * (refractStrength * 0.6 + 0.4);
+            float rimFactor = exp(-abs(sdf) / 12.0);
+            float rimLight = pow(specular, 4.0) * rimFactor * 0.32 * (effTilt * 0.5 + 0.5);
 
-            // Inner ambient liquid sheen
-            float innerSheen = exp(-abs(sdf + 2.5) / 4.0) * 0.10 * refractStrength;
+            // Inner ambient liquid sheen along border contour
+            float innerSheen = exp(-abs(sdf + 2.5) / 3.5) * 0.08 * effTilt;
 
-            glassCol += half3(rimLight + innerSheen, rimLight + innerSheen * 1.08, rimLight + innerSheen * 1.18);
+            glassCol += half3(rimLight + innerSheen, rimLight + innerSheen * 1.06, rimLight + innerSheen * 1.14);
 
-            // Smoothly composite with background preserving full transparency
+            // Smoothly composite with background preserving complete transparency
             half4 result = half4(glassCol, bgOrig.a);
             return mix(bgOrig, result, inside);
         }
